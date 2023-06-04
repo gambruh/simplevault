@@ -51,7 +51,7 @@ func (c *Client) sendCardToDB(card database.Card) error {
 }
 
 func (c *Client) saveCardInStorage(card database.Card) error {
-	err := c.Storage.SaveCard(card)
+	err := c.Storage.SaveCard(card, c.Key)
 	if err != nil {
 		return fmt.Errorf("error in saveCardInStorage:%w", err)
 	}
@@ -123,16 +123,26 @@ func (c *Client) getCardFromDB(cardname string) (card database.Card, err error) 
 			return database.Card{}, fmt.Errorf("error when decoding json in getCardFromDB: %w", err)
 		}
 		return card, nil
+	case 204:
+		return database.Card{}, ErrDataNotFound
 	case 400:
 		return database.Card{}, ErrBadRequest
 	case 401:
 		return database.Card{}, ErrLoginRequired
-	case 404:
-		return database.Card{}, ErrDataNotFound
 	case 500:
 		return database.Card{}, ErrServerIsDown
 	default:
 		return database.Card{}, errors.New("unexpected error")
 	}
 
+}
+
+func (c *Client) getCardFromLocalStorage(cardname string) (card database.Card, err error) {
+
+	card, err = c.Storage.GetCard(cardname, c.Key)
+	if err != nil {
+		return database.Card{}, err
+	}
+
+	return card, nil
 }

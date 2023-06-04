@@ -68,14 +68,28 @@ func (c *Client) GetCardCommand(input []string) {
 	card, err := c.getCardFromDB(cardname)
 	switch err {
 	case ErrDataNotFound:
-		fmt.Println("Card with that name not found")
+		fmt.Println("Card with that name not found in the DB")
 	case ErrLoginRequired:
 		fmt.Println("Please login to the server")
 	case ErrBadRequest:
 		fmt.Println("Please contact devs to change API interaction, wrong request")
 	case ErrServerIsDown:
 		fmt.Println("Internal server error")
+	case nil:
+		fmt.Printf("%+v\n", card)
 	}
+
+	card, err = c.getCardFromLocalStorage(cardname)
+	if err != nil {
+		if err == database.ErrDataNotFound {
+			fmt.Println("No data in local storage")
+			return
+		} else {
+			fmt.Println("error when trying to get card data from local storage:", err)
+			return
+		}
+	}
+	//result of the command, if no errors
 	fmt.Printf("%+v\n", card)
 }
 

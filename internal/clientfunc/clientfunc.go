@@ -15,10 +15,13 @@ type Client struct {
 	Client        *http.Client
 	AuthCookie    *http.Cookie
 	LoggedOffline bool
+	Key           []byte
 }
 
 type LocalStorage interface {
-	SaveCard(card database.Card) error
+	SaveCard(card database.Card, key []byte) error
+	GetCard(cardname string, key []byte) (card database.Card, err error)
+	ListCards(key []byte) (cards []string, err error)
 }
 
 func NewClient() *Client {

@@ -12,7 +12,7 @@ const checkTableExistsQuery = `
 
 const createLoginCredsTableQuery = `
 	CREATE TABLE gk_logincreds (
-		name TEXT NOT NULL UNIQUE,
+		name TEXT NOT NULL,
 		login TEXT,
 		password TEXT,
 		site TEXT,
@@ -26,7 +26,7 @@ const createLoginCredsTableQuery = `
 
 const createCardsTableQuery = `
 	CREATE TABLE gk_cards (
-		cardname TEXT NOT NULL UNIQUE,
+		cardname TEXT NOT NULL,
 		number TEXT,
 		name TEXT,
 		surname TEXT,
@@ -42,7 +42,7 @@ const createCardsTableQuery = `
 
 const createNotesTableQuery = `
 	CREATE TABLE gk_notes (
-		name TEXT NOT NULL UNIQUE,
+		name TEXT NOT NULL,
 		note TEXT,
 		user_id integer NOT NULL,
 		CONSTRAINT fk_gk_users
@@ -56,7 +56,7 @@ const createBinariesTableQuery = `
 	CREATE TABLE gk_binaries (
 		id SERIAL,
 		user_id integer NOT NULL,
-		name TEXT NOT NULL UNIQUE,
+		name TEXT NOT NULL,
 		data BYTEA,
 		PRIMARY KEY (id),
 		CONSTRAINT fk_gk_users

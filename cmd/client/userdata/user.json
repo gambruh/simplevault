@@ -1,4 +1,1 @@
-{
-    "login":"Vasya",
-    "password":"$argon2id$v=19$m=65536,t=1,p=2$AP5AC2KUJIdAR8PlwQQ92Q$3f1hTrGGpAbnO9yBGCs65nlfCqotVAZaVwDd2LifaWk"
-}
+{"login":"Vasya","password":"$argon2id$v=19$m=65536,t=1,p=2$gt6CMW3kg522mSoOo3vwFw$uD5JvSJXlqr/p9gIDo9nmO9tcJPJoMBT//MOfQ8RLlY"}

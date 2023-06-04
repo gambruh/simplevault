@@ -2,6 +2,7 @@ package clientfunc
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/gambruh/gophkeeper/internal/argon2id"
 	"github.com/gambruh/gophkeeper/internal/auth"
+	"github.com/gambruh/gophkeeper/internal/config"
 )
 
 const userdata = "./userdata/user.json"
@@ -55,7 +57,10 @@ func (c *Client) Register(input []string) {
 	switch err {
 	case nil:
 		c.AuthCookie = authcookie
+		key := sha256.Sum256([]byte(loginData.Password))
+		c.Key = key[:]
 		fmt.Println("registered successfully")
+		c.CreateUserLoginFile(loginData.Login, loginData.Password)
 	case ErrUsernameIsTaken:
 		fmt.Println("Username is taken, please provide another")
 	default:
@@ -85,11 +90,15 @@ func (c *Client) Login(input []string) {
 	case nil:
 		fmt.Println("Logged on the server!")
 		c.AuthCookie = authcookie
+		key := sha256.Sum256([]byte(loginData.Password))
+		c.Key = key[:]
+		c.CreateUserLoginFile(loginData.Login, loginData.Password)
 	case ErrWrongLoginData:
 		fmt.Println("wrong login credentials, try again")
 		return
 	case ErrServerIsDown:
 		fmt.Println("Server is down, try again later")
+		c.AuthCookie = nil
 	default:
 		fmt.Println("error when trying to login online: ", err)
 	}
@@ -218,4 +227,26 @@ func (c *Client) sendLoginRequest(login auth.LoginData) (*http.Cookie, error) {
 	default:
 		return nil, fmt.Errorf("unexpected error in sendLoginRequest")
 	}
+}
+
+func (c *Client) CreateUserLoginFile(username, password string) error {
+
+	file, err := os.OpenFile(config.ClientCfg.UserData, os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0600)
+	if err != nil {
+		return fmt.Errorf("error when trying to create/open userdata file:%w", err)
+	}
+	defer file.Close()
+
+	hashedpassword, err := argon2id.CreateHash(password, argon2id.DefaultParams)
+	if err != nil {
+		return fmt.Errorf("error when trying to hash password:%w", err)
+	}
+
+	//writing to the file
+	_, err = fmt.Fprintf(file, `{"login":"%s","password":"%s"}`, username, hashedpassword)
+	if err != nil {
+		return fmt.Errorf("error when trying to write into file:%w", err)
+	}
+
+	return nil
 }
