@@ -150,30 +150,32 @@ func (s *SQLdb) createBinariesTable() error {
 }
 
 func (s *SQLdb) SetCard(username string, cardData Card) error {
-
-	var id string
-	err := s.DB.QueryRow(CheckIDbyUsernameQuery, username).Scan(&id)
-	if err != nil {
-		log.Println("error when trying to connect to database in SetCard:", err)
-		return err
-	}
-
-	_, err = s.DB.Exec(setCardQuery, cardData.Number, cardData.Name, cardData.Surname, cardData.Code, cardData.Bank, cardData.ValidTill, id)
+	_, err := s.DB.Exec(setCardQuery, cardData.Cardname, cardData.Number, cardData.Name, cardData.Surname, cardData.ValidTill, cardData.Code, username)
 	if err != nil {
 		return fmt.Errorf("error setting card data in SetCard:%w", err)
 	}
-
 	return nil
 }
 
 func (s *SQLdb) SetLoginCred(username string, loginData LoginCreds) error {
-
+	_, err := s.DB.Exec(setLoginCredsQuery, loginData.Name, loginData.Login, loginData.Password, loginData.Site, username)
+	if err != nil {
+		return fmt.Errorf("error setting card data in SetLoginCred:%w", err)
+	}
 	return nil
 }
 
 func (s *SQLdb) GetCard(username string, cardname string) (cardData Card, err error) {
-
-	return Card{}, nil
+	row := s.DB.QueryRow(getCardQuery, cardname, username)
+	err = row.Scan(cardData)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return Card{}, ErrDataNotFound
+		} else {
+			return Card{}, fmt.Errorf("error in GetCard:%w", err)
+		}
+	}
+	return cardData, nil
 }
 
 func (s *SQLdb) ListCards(username string) (cards []Card, err error) {
@@ -190,7 +192,7 @@ func (s *SQLdb) ListCards(username string) (cards []Card, err error) {
 	for rows.Next() {
 		var card Card
 
-		err := rows.Scan(&card.Bank, &card.Number, &card.Name, &card.Surname, &card.ValidTill, &card.Code)
+		err := rows.Scan(&card.Cardname, &card.Number, &card.Name, &card.Surname, &card.ValidTill, &card.Code)
 		if err != nil {
 			return nil, fmt.Errorf("error scanning in ListCards:%w", err)
 		}

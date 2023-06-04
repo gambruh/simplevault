@@ -50,10 +50,10 @@ const createPasswordsTableQuery = `
 	);
 `
 
-const dropPasswordsTableQuery = `
-	DROP TABLE gk_passwords CASCADE;
-`
+//const dropPasswordsTableQuery = `
+//	DROP TABLE gk_passwords CASCADE;
+//`
 
-const dropUsersTableQuery = `
-	DROP TABLE gk_users CASCADE;
-`
+//const dropUsersTableQuery = `
+//	DROP TABLE gk_users CASCADE;
+//`

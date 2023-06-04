@@ -128,11 +128,7 @@ func (s *AuthDB) CheckTableExists(tablename string) error {
 }
 
 func (s *AuthDB) InitAuthDB() error {
-	err := s.CheckNDropTables()
-	if err != nil {
-		return err
-	}
-	err = s.CreateUsersTable()
+	err := s.CreateUsersTable()
 	if err != nil {
 		return err
 	}
@@ -142,6 +138,7 @@ func (s *AuthDB) InitAuthDB() error {
 	}
 	return nil
 }
+
 func (s *AuthDB) CreateUsersTable() error {
 	err := s.CheckTableExists(userstablename)
 	if err == ErrTableDoesntExist {
@@ -164,32 +161,6 @@ func (s *AuthDB) CreatePasswordsTable() error {
 	return nil
 }
 
-func (s *AuthDB) CheckNDropTables() error {
-	var check bool
-
-	err := s.db.QueryRow(checkTableExistsQuery, userstablename).Scan(&check)
-	if err != nil {
-		fmt.Printf("error checking if table exists: %v", err)
-		return err
-	}
-	if check {
-		_, err = s.db.Exec(dropPasswordsTableQuery)
-		if err != nil {
-			return err
-		}
-		_, err = s.db.Exec(dropUsersTableQuery)
-		if err != nil {
-			return err
-		}
-	}
-	if err != nil {
-		fmt.Printf("error dropping a table: %v", err)
-		return err
-	}
-
-	return nil
-}
-
 func (s *AuthDB) Register(login string, password string) error {
 	var username string
 	hashedpassword, err := argon2id.CreateHash(password, argon2id.DefaultParams)
@@ -198,16 +169,14 @@ func (s *AuthDB) Register(login string, password string) error {
 		return err
 	}
 	e := s.db.QueryRow(CheckUsernameQuery, login).Scan(&username)
-
 	switch e {
 	case sql.ErrNoRows:
 		_, err := s.db.Exec(AddNewUserQuery, login, hashedpassword)
 		return err
 	case nil:
-		err := ErrUsernameIsTaken
-		return err
+		return ErrUsernameIsTaken
 	default:
-		fmt.Printf("Something wrong when adding a user in database: %v\n", e)
+		fmt.Printf("unexpected error in Register user: %v\n", e)
 		return e
 	}
 }

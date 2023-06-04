@@ -12,7 +12,7 @@ const checkTableExistsQuery = `
 
 const createLoginCredsTableQuery = `
 	CREATE TABLE gk_logincreds (
-		name TEXT,
+		name TEXT NOT NULL UNIQUE,
 		login TEXT,
 		password TEXT,
 		site TEXT,
@@ -26,12 +26,12 @@ const createLoginCredsTableQuery = `
 
 const createCardsTableQuery = `
 	CREATE TABLE gk_cards (
+		cardname TEXT NOT NULL UNIQUE,
 		number TEXT,
 		name TEXT,
 		surname TEXT,
-		code integer,
 		valid_till TEXT,
-		bank TEXT,
+		code TEXT,
 		user_id integer NOT NULL,
 		CONSTRAINT fk_gk_users
 			FOREIGN KEY (user_id)
@@ -42,11 +42,9 @@ const createCardsTableQuery = `
 
 const createNotesTableQuery = `
 	CREATE TABLE gk_notes (
-		id SERIAL,
-		user_id integer NOT NULL,
-		name TEXT,
+		name TEXT NOT NULL UNIQUE,
 		note TEXT,
-		PRIMARY KEY (id),
+		user_id integer NOT NULL,
 		CONSTRAINT fk_gk_users
 			FOREIGN KEY (user_id)
 				REFERENCES gk_users(id)
@@ -58,7 +56,7 @@ const createBinariesTableQuery = `
 	CREATE TABLE gk_binaries (
 		id SERIAL,
 		user_id integer NOT NULL,
-		name TEXT,
+		name TEXT NOT NULL UNIQUE,
 		data BYTEA,
 		PRIMARY KEY (id),
 		CONSTRAINT fk_gk_users
@@ -71,15 +69,27 @@ const createBinariesTableQuery = `
 // set/get queries
 
 const listCardsQuery = `
-	SELECT gk_cards.bank, gk_cards.number, gk_cards.name, gk_cards.surname, gk_cards.valid_till, gk_cards.code
+	SELECT gk_cards.cardname, gk_cards.number, gk_cards.name, gk_cards.surname, gk_cards.valid_till, gk_cards.code
 	FROM gk_cards
-	JOIN gk_users ON cards.user_id = gk_users.id
+	JOIN gk_users ON gk_cards.user_id = gk_users.id
 	WHERE gk_users.username = $1;
 `
 
 const setCardQuery = `
-	INSERT INTO gk_cards(number, name, surname, code, bank, valid_till, user_id)
-	VALUES ($1,$2,$3,$4,$5,$6);
+	INSERT INTO gk_cards(cardname, number, name, surname, code, valid_till, user_id)
+	VALUES ($1,$2,$3,$4,$5,$6,(SELECT id FROM gk_users WHERE username=$7));
+`
+
+const setLoginCredsQuery = `
+	INSERT INTO gk_logincreds(name, login, password, site, user_id)
+	VALUES ($1,$2,$3,$4,(SELECT id FROM gk_users WHERE username=$5));
+`
+
+const getCardQuery = `
+	SELECT gk_cards.cardname, gk_cards.number, gk_cards.name, gk_cards.surname, gk_cards.valid_till, gk_cards.code
+	FROM gk_cards
+	JOIN gk_users ON gk_cards.user_id = gk_users.id
+	WHERE gk_cards.cardname=$1 AND gk_users.username=$2;
 `
 
 const CheckIDbyUsernameQuery = `

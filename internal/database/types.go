@@ -18,7 +18,7 @@ type Binary struct {
 }
 
 type Card struct {
-	Bank      string `json:"bank"`
+	Cardname  string `json:"cardname"`
 	Number    string `json:"number"`
 	Name      string `json:"name"`
 	Surname   string `json:"surname"`

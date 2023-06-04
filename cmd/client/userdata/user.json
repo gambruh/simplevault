@@ -1,4 +1,4 @@
 {
-    "username":"Vasya",
-    "password":"12345"
+    "login":"Vasya",
+    "password":"$argon2id$v=19$m=65536,t=1,p=2$AP5AC2KUJIdAR8PlwQQ92Q$3f1hTrGGpAbnO9yBGCs65nlfCqotVAZaVwDd2LifaWk"
 }

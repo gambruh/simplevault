@@ -1,19 +1,19 @@
 package main
 
 import (
-	"flag"
+	"bufio"
 	"fmt"
+	"os"
+	"strings"
 
 	"github.com/gambruh/gophkeeper/internal/clientfunc"
 	"github.com/gambruh/gophkeeper/internal/config"
 )
 
 func main() {
-
 	// Init config
 	config.InitClientFlags()
 	config.SetClientConfig()
-	fmt.Printf("%v\n", config.ClientCfg)
 
 	//Init new client
 	client := clientfunc.NewClient()
@@ -23,26 +23,47 @@ func main() {
 		"register": client.Register,
 		"login":    client.Login,
 		"setcard":  client.SetCardCommand,
+		"getcard":  client.GetCardCommand,
 	}
 
-	// Parse command-line arguments
-	flag.Parse()
+	fmt.Println("write help to get commands list")
+	reader := bufio.NewReader(os.Stdin)
 
-	// Get the command name
-	args := flag.Args()
-	if len(args) < 1 {
-		fmt.Println("Please specify a command.")
-		clientfunc.PrintAvailableCommands(commands)
-		return
+	for {
+		fmt.Print("Enter a command: ")
+		input, err := reader.ReadString('\n')
+		if err != nil {
+			fmt.Println("Error reading input:", err)
+			continue
+		}
+		// Trim any leading/trailing whitespace and newline characters
+		input = strings.TrimSpace(input)
+
+		// Process the command
+		if input == "quit" {
+			fmt.Println("Exiting...")
+			break
+		}
+		if input == "help" {
+			clientfunc.PrintAvailableCommands(commands)
+			continue
+		}
+
+		// Get the command name
+		inpt := strings.Split(input, " ")
+		if len(inpt) < 1 {
+			fmt.Println("Please specify a command.")
+			clientfunc.PrintAvailableCommands(commands)
+		}
+
+		command := inpt[0]
+
+		if fn, ok := commands[command]; ok {
+			fn(inpt)
+		} else {
+			fmt.Printf("Unknown command: %s\n", command)
+			clientfunc.PrintAvailableCommands(commands)
+		}
 	}
-
-	command := args[0]
-
-	if fn, ok := commands[command]; ok {
-		fn(args)
-	} else {
-		fmt.Printf("Unknown command: %s\n", command)
-		clientfunc.PrintAvailableCommands(commands)
-		return
-	}
+	defer fmt.Println("Client exited!")
 }
