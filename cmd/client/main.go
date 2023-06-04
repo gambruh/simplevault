@@ -7,10 +7,21 @@ import (
 	"strings"
 
 	"github.com/gambruh/gophkeeper/internal/clientfunc"
+	"github.com/gambruh/gophkeeper/internal/compileinfo"
 	"github.com/gambruh/gophkeeper/internal/config"
 )
 
+var (
+	buildVersion string
+	buildDate    string
+	buildCommit  string
+)
+
 func main() {
+
+	// вывод информации о компиляции
+	compileinfo.PrintCompileInfo(buildVersion, buildDate, buildCommit)
+
 	// Init config
 	config.InitClientFlags()
 	config.SetClientConfig()
@@ -20,10 +31,11 @@ func main() {
 
 	// Define available commands
 	commands := map[string]func([]string){
-		"register": client.Register,
-		"login":    client.Login,
-		"setcard":  client.SetCardCommand,
-		"getcard":  client.GetCardCommand,
+		"register":  client.Register,
+		"login":     client.Login,
+		"setcard":   client.SetCardCommand,
+		"getcard":   client.GetCardCommand,
+		"listcards": client.ListCardsCommand,
 	}
 
 	fmt.Println("write help to get commands list")

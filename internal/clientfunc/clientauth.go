@@ -15,14 +15,6 @@ import (
 
 const userdata = "./userdata/user.json"
 
-var (
-	ErrLoginRequired    = errors.New("please login first")
-	ErrNoCookieReturned = errors.New("server has not returned cookie")
-	ErrWrongLoginData   = errors.New("wrong login data")
-	ErrServerIsDown     = errors.New("server is down")
-	ErrUsernameIsTaken  = errors.New("username is taken")
-)
-
 func getUserDataFromFile() (auth.LoginData, error) {
 
 	var logindata auth.LoginData

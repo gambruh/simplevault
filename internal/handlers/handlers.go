@@ -39,7 +39,7 @@ type Storage interface {
 	ListLoginCreds(username string) ([]database.LoginCreds, error)
 	//	ListNotes(username string) ([]Note, error)
 	//	ListBinaries(username string) ([]Binary, error)
-	ListCards(username string) ([]database.Card, error)
+	ListCards(username string) ([]string, error)
 }
 
 var (
@@ -215,6 +215,8 @@ func (h *WebService) AddCard(w http.ResponseWriter, r *http.Request) {
 	switch err {
 	case nil:
 		w.WriteHeader(http.StatusAccepted)
+	case database.ErrMetanameIsTaken:
+		w.WriteHeader(http.StatusConflict)
 	default:
 		fmt.Println("Unexpected case in AddCard Handler:", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -271,10 +273,11 @@ func (h *WebService) GetCard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	card, err := h.Storage.GetCard(username.(string), carddata.Name)
+	card, err := h.Storage.GetCard(username.(string), carddata.Cardname)
 
 	switch err {
 	case nil:
+		w.Header().Add("Content-type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(card)
 	case database.ErrDataNotFound:

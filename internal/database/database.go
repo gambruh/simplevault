@@ -25,7 +25,7 @@ type Storage interface {
 	ListLoginCreds(username string) ([]LoginCreds, error)
 	//	ListNotes(username string) ([]Note, error)
 	//	ListBinaries(username string) ([]Binary, error)
-	ListCards(username string) ([]Card, error)
+	ListCards(username string) ([]string, error)
 }
 
 type SQLdb struct {
@@ -37,6 +37,7 @@ var (
 	ErrTableDoesntExist = errors.New("table doesn't exist")
 	ErrWrongPassword    = errors.New("wrong password")
 	ErrDataNotFound     = errors.New("requested data not found in storage")
+	ErrMetanameIsTaken  = errors.New("metaname is already in use")
 )
 
 func NewSQLdb(postgresStr string) *SQLdb {
@@ -150,7 +151,14 @@ func (s *SQLdb) createBinariesTable() error {
 }
 
 func (s *SQLdb) SetCard(username string, cardData Card) error {
-	_, err := s.DB.Exec(setCardQuery, cardData.Cardname, cardData.Number, cardData.Name, cardData.Surname, cardData.ValidTill, cardData.Code, username)
+
+	var cardname string
+	err := s.DB.QueryRow(checkCardNameQuery, cardData.Cardname).Scan(&cardname)
+	if err != sql.ErrNoRows {
+		return ErrMetanameIsTaken
+	}
+
+	_, err = s.DB.Exec(setCardQuery, cardData.Cardname, cardData.Number, cardData.Name, cardData.Surname, cardData.ValidTill, cardData.Code, username)
 	if err != nil {
 		return fmt.Errorf("error setting card data in SetCard:%w", err)
 	}
@@ -165,9 +173,9 @@ func (s *SQLdb) SetLoginCred(username string, loginData LoginCreds) error {
 	return nil
 }
 
-func (s *SQLdb) GetCard(username string, cardname string) (cardData Card, err error) {
-	row := s.DB.QueryRow(getCardQuery, cardname, username)
-	err = row.Scan(cardData)
+func (s *SQLdb) GetCard(username string, cardname string) (Card, error) {
+	var cardData Card
+	err := s.DB.QueryRow(getCardQuery, cardname, username).Scan(&cardData.Cardname, &cardData.Number, &cardData.Name, &cardData.Surname, &cardData.ValidTill, &cardData.Code)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return Card{}, ErrDataNotFound
@@ -178,8 +186,7 @@ func (s *SQLdb) GetCard(username string, cardname string) (cardData Card, err er
 	return cardData, nil
 }
 
-func (s *SQLdb) ListCards(username string) (cards []Card, err error) {
-	cards = make([]Card, 0)
+func (s *SQLdb) ListCards(username string) (cardnames []string, err error) {
 
 	rows, err := s.DB.Query(listCardsQuery, username)
 	if err != nil {
@@ -190,13 +197,13 @@ func (s *SQLdb) ListCards(username string) (cards []Card, err error) {
 	}
 
 	for rows.Next() {
-		var card Card
+		var cardname string
 
-		err := rows.Scan(&card.Cardname, &card.Number, &card.Name, &card.Surname, &card.ValidTill, &card.Code)
+		err := rows.Scan(&cardname)
 		if err != nil {
 			return nil, fmt.Errorf("error scanning in ListCards:%w", err)
 		}
-		cards = append(cards, card)
+		cardnames = append(cardnames, cardname)
 
 	}
 
@@ -206,7 +213,7 @@ func (s *SQLdb) ListCards(username string) (cards []Card, err error) {
 		return nil, fmt.Errorf("error scanning with rows.Next() in ListCards:%w", err)
 	}
 
-	return cards, nil
+	return cardnames, nil
 }
 
 func (s *SQLdb) GetLoginCred(username string, loginname string) (LoginCreds, error) {

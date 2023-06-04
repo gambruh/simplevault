@@ -69,7 +69,7 @@ const createBinariesTableQuery = `
 // set/get queries
 
 const listCardsQuery = `
-	SELECT gk_cards.cardname, gk_cards.number, gk_cards.name, gk_cards.surname, gk_cards.valid_till, gk_cards.code
+	SELECT gk_cards.cardname
 	FROM gk_cards
 	JOIN gk_users ON gk_cards.user_id = gk_users.id
 	WHERE gk_users.username = $1;
@@ -96,4 +96,10 @@ const CheckIDbyUsernameQuery = `
 	SELECT id 
 	FROM gk_users 
 	WHERE username = $1;
+`
+
+const checkCardNameQuery = `
+	SELECT cardname
+	FROM gk_cards
+	WHERE cardname = $1;
 `
