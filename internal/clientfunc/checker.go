@@ -4,33 +4,36 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"sync"
 	"time"
 
 	"github.com/gambruh/gophkeeper/internal/database"
-	"github.com/gambruh/gophkeeper/internal/encrypt"
 	"github.com/gambruh/gophkeeper/internal/helpers"
 )
 
 // DataChecker synchronizes data between local storage and DB
-func (c *Client) DataChecker(context context.Context, ticker *time.Ticker) {
-	if c.AuthCookie == nil {
-		return
+func (c *Client) DataChecker(context context.Context, ticker *time.Ticker, wgShutdown *sync.WaitGroup) {
+	defer wgShutdown.Done()
+
+	for {
+		select {
+		case <-context.Done():
+			return
+		case <-ticker.C:
+			err := c.CheckCards()
+			if err != nil {
+				log.Println("error in CheckAll function returned from CheckCards:", err)
+			}
+			fmt.Println("vault synced!")
+		}
 	}
 
-	select {
-	case <-context.Done():
-		return
-	case <-ticker.C:
-		err := c.CheckCards()
-		if err != nil {
-			log.Println("error in CheckAll function returned from CheckCards:", err)
-		}
-		fmt.Println("vault synced!")
-	}
 }
 
 func (c *Client) CheckCards() error {
-
+	if c.AuthCookie == nil {
+		return nil
+	}
 	cardsDB, err := c.listCardsFromDB()
 	if err != nil {
 		return err
@@ -72,12 +75,17 @@ func (c *Client) CheckCards() error {
 	}
 
 	for cardname := range toDownload {
-		var card database.Card
 		eCard, err := c.getCardFromDB(cardname)
+
 		if err != nil {
 			return err
 		}
-		encrypt.DecryptFromString(eCard.Data, c.Key)
+
+		card, err := helpers.DecryptCardData(eCard, c.Key)
+		if err != nil {
+			return err
+		}
+
 		err = c.saveCardInStorage(card)
 		if err != nil {
 			return err

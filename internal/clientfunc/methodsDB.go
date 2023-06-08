@@ -78,7 +78,6 @@ func (c *Client) listCardsFromDB() (cards []string, err error) {
 	case 500:
 		return nil, ErrServerIsDown
 	}
-	//fmt.Println("cards list:", cards)
 	return cards, nil
 }
 

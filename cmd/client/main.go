@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gambruh/gophkeeper/internal/clientfunc"
@@ -36,6 +37,8 @@ func main() {
 	// creating context for graceful shutdown
 	ctxShutdown, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
+	var wgShutdown sync.WaitGroup
+	wgShutdown.Add(2)
 
 	// Ticker for synchronization
 	syncTime := time.NewTicker(config.ClientCfg.CheckTime)
@@ -51,60 +54,60 @@ func main() {
 	}
 
 	// goroutine for data synchronization
-	go client.DataChecker(ctxShutdown, syncTime)
+	go client.DataChecker(ctxShutdown, syncTime, &wgShutdown)
 
 	fmt.Println("write help to get commands list")
-	reader := bufio.NewReader(os.Stdin)
 
-	for {
-		select {
-		case <-ctxShutdown.Done():
-			err := client.CheckCards()
+	go func() {
+		defer wgShutdown.Done()
+		for {
+			select {
+			case <-ctxShutdown.Done():
+				return
+			default:
+				// going down
+			}
+			reader := bufio.NewReader(os.Stdin)
+
+			fmt.Println()
+			fmt.Println("Enter a command:")
+
+			input, err := reader.ReadString('\n')
 			if err != nil {
-				log.Println("error in CheckCards1:", err)
+				return
+			}
+			// Trim any leading/trailing whitespace and newline characters
+			input = strings.TrimSpace(input)
+
+			// Process the command
+			if input == "quit" {
+				fmt.Println("Exiting...")
+				return
+			}
+			if input == "help" {
+				clientfunc.PrintAvailableCommands(commands)
+				continue
 			}
 
-			defer fmt.Println("Client exited!")
-			return
-		default:
+			// Get the command name
+			inpt := strings.Split(input, " ")
+			if len(inpt) < 1 {
+				fmt.Println("Please specify a command.")
+				clientfunc.PrintAvailableCommands(commands)
+			}
 
-		}
-		fmt.Println("Enter a command:")
-		input, err := reader.ReadString('\n')
-		if err != nil {
-			fmt.Println("Error reading input:", err)
-			continue
-		}
-		// Trim any leading/trailing whitespace and newline characters
-		input = strings.TrimSpace(input)
+			command := inpt[0]
 
-		// Process the command
-		if input == "quit" {
-			fmt.Println("Exiting...")
-			break
+			if fn, ok := commands[command]; ok {
+				fn(inpt)
+			} else {
+				fmt.Printf("Unknown command: %s\n", command)
+				clientfunc.PrintAvailableCommands(commands)
+			}
 		}
-		if input == "help" {
-			clientfunc.PrintAvailableCommands(commands)
-			continue
-		}
+	}()
 
-		// Get the command name
-		inpt := strings.Split(input, " ")
-		if len(inpt) < 1 {
-			fmt.Println("Please specify a command.")
-			clientfunc.PrintAvailableCommands(commands)
-		}
-
-		command := inpt[0]
-
-		if fn, ok := commands[command]; ok {
-			fn(inpt)
-		} else {
-			fmt.Printf("Unknown command: %s\n", command)
-			clientfunc.PrintAvailableCommands(commands)
-		}
-	}
-
+	wgShutdown.Wait()
 	err := client.CheckCards()
 	if err != nil {
 		log.Println("error in CheckAll2 function returned from CheckCards:", err)
