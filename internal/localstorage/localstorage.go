@@ -3,9 +3,11 @@ package localstorage
 import (
 	"bufio"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/gambruh/gophkeeper/internal/config"
 	"github.com/gambruh/gophkeeper/internal/database"
@@ -13,10 +15,11 @@ import (
 )
 
 type LocalStorage struct {
-	Cards      string
-	Logincreds string
-	Notes      string
-	Binaries   string
+	Cards      []string
+	Logincreds []string
+	Notes      []string
+	Binaries   []string
+	Mu         sync.Mutex
 }
 
 const (
@@ -26,16 +29,52 @@ const (
 	loginCredsFile = "/logincred"
 )
 
+var (
+	ErrMetanameIsTaken = errors.New("metaname is taken, please provide another item name")
+	ErrNoData          = errors.New("data not found")
+)
+
 func NewStorage() *LocalStorage {
-	return &LocalStorage{
-		Cards:      cardsFile,
-		Logincreds: loginCredsFile,
-		Notes:      notesFile,
-		Binaries:   binariesFile,
+	ls := &LocalStorage{
+		Cards:      make([]string, 0),
+		Logincreds: make([]string, 0),
+		Notes:      make([]string, 0),
+		Binaries:   make([]string, 0),
+		Mu:         sync.Mutex{},
 	}
+
+	return ls
+
+}
+
+func (s *LocalStorage) InitStorage(key []byte) error {
+	list, err := s.ListCardsFromFile(key)
+	if err != nil {
+		s.DeleteLocalStorage()
+		s.Cards = []string{}
+		return nil
+	}
+	s.Cards = list
+	return nil
 }
 
 func (s *LocalStorage) SaveCard(card database.Card, key []byte) error {
+	s.Mu.Lock()
+	defer s.Mu.Unlock()
+	// check if the card with this name is in storage. Return error if yes
+	if check := s.lookupCard(card.Cardname); check {
+		return ErrMetanameIsTaken
+	}
+
+	// add cardname to check array
+	s.Cards = append(s.Cards, card.Cardname)
+
+	file, err := os.OpenFile(config.ClientCfg.LocalStorage+cardsFile, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0600)
+	if err != nil {
+		return fmt.Errorf("error in SaveCard when opening file:%w", err)
+	}
+	defer file.Close()
+
 	// concatenating card to string
 	cardStr := card.Cardname + "," + card.Number + "," + card.Name + "," + card.Surname + "," + card.ValidTill + "," + card.Code
 
@@ -47,12 +86,6 @@ func (s *LocalStorage) SaveCard(card database.Card, key []byte) error {
 	// Encode the encrypted password in base64 for storage
 	encodedData := base64.StdEncoding.EncodeToString(encrypted)
 
-	file, err := os.OpenFile(config.ClientCfg.LocalStorage+s.Cards, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0600)
-	if err != nil {
-		return fmt.Errorf("error in SaveCard when opening file:%w", err)
-	}
-	defer file.Close()
-
 	_, err = fmt.Fprintf(file, "%s\n", encodedData)
 	if err != nil {
 		fmt.Println("Error writing to file:", err)
@@ -63,9 +96,15 @@ func (s *LocalStorage) SaveCard(card database.Card, key []byte) error {
 }
 
 func (s *LocalStorage) GetCard(cardname string, key []byte) (card database.Card, err error) {
+	s.Mu.Lock()
+	defer s.Mu.Unlock()
+	// check if the card with this name is in storage. Return error if yes
+	if check := s.lookupCard(cardname); !check {
+		return database.Card{}, ErrNoData
+	}
 
 	// opening the localstorage file
-	file, err := os.OpenFile(config.ClientCfg.LocalStorage+s.Cards, os.O_RDONLY|os.O_CREATE, 0600)
+	file, err := os.OpenFile(config.ClientCfg.LocalStorage+cardsFile, os.O_RDONLY|os.O_CREATE, 0600)
 	if err != nil {
 		return database.Card{}, fmt.Errorf("error in SaveCard when opening file:%w", err)
 	}
@@ -104,10 +143,15 @@ func (s *LocalStorage) GetCard(cardname string, key []byte) (card database.Card,
 	return database.Card{}, database.ErrDataNotFound
 }
 
-func (s *LocalStorage) ListCards(key []byte) (cards []string, err error) {
+func (s *LocalStorage) ListCards() (cards []string, err error) {
 
+	return s.Cards, nil
+}
+func (s *LocalStorage) ListCardsFromFile(key []byte) (cards []string, err error) {
+	s.Mu.Lock()
+	defer s.Mu.Unlock()
 	// opening the localstorage file
-	file, err := os.OpenFile(config.ClientCfg.LocalStorage+s.Cards, os.O_RDONLY|os.O_CREATE, 0600)
+	file, err := os.OpenFile(config.ClientCfg.LocalStorage+cardsFile, os.O_RDONLY|os.O_CREATE, 0600)
 	if err != nil {
 		return nil, fmt.Errorf("error in ListCards when opening file:%w", err)
 	}
@@ -116,8 +160,47 @@ func (s *LocalStorage) ListCards(key []byte) (cards []string, err error) {
 	scanner := bufio.NewScanner(file)
 
 	for scanner.Scan() {
-		scanner.Text()
+		line := scanner.Text()
+
+		dst, err := base64.StdEncoding.DecodeString(line)
+		if err != nil {
+			return nil, err
+		}
+		decryptedData, err := encrypt.DecryptData(dst, key)
+		if err != nil {
+			return nil, err
+		}
+
+		//Getting the card string, splitting it by comma to get values
+		cardStr := string(decryptedData)
+		cardArr := strings.Split(cardStr, ",")
+
+		// cardArr[0] is the cardname
+		cards = append(cards, cardArr[0])
+	}
+
+	if len(cards) == 0 {
+		return nil, ErrNoData
 	}
 
 	return cards, nil
+}
+
+func (s *LocalStorage) lookupCard(cardname string) bool {
+
+	for _, c := range s.Cards {
+		if c == cardname {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *LocalStorage) DeleteLocalStorage() error {
+
+	err := os.Remove(config.ClientCfg.LocalStorage + cardsFile)
+	if err != nil {
+		return fmt.Errorf("can't delete local cache:%w", err)
+	}
+	return nil
 }

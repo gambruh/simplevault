@@ -2,9 +2,13 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"fmt"
+	"log"
 	"os"
+	"os/signal"
 	"strings"
+	"time"
 
 	"github.com/gambruh/gophkeeper/internal/clientfunc"
 	"github.com/gambruh/gophkeeper/internal/compileinfo"
@@ -22,12 +26,20 @@ func main() {
 	// вывод информации о компиляции
 	compileinfo.PrintCompileInfo(buildVersion, buildDate, buildCommit)
 
-	// Init config
+	// Init client config
 	config.InitClientFlags()
 	config.SetClientConfig()
 
 	//Init new client
 	client := clientfunc.NewClient()
+
+	// creating context for graceful shutdown
+	ctxShutdown, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer cancel()
+
+	// Ticker for synchronization
+	syncTime := time.NewTicker(config.ClientCfg.CheckTime)
+	defer syncTime.Stop()
 
 	// Define available commands
 	commands := map[string]func([]string){
@@ -38,11 +50,26 @@ func main() {
 		"listcards": client.ListCardsCommand,
 	}
 
+	// goroutine for data synchronization
+	go client.DataChecker(ctxShutdown, syncTime)
+
 	fmt.Println("write help to get commands list")
 	reader := bufio.NewReader(os.Stdin)
 
 	for {
-		fmt.Print("Enter a command: ")
+		select {
+		case <-ctxShutdown.Done():
+			err := client.CheckCards()
+			if err != nil {
+				log.Println("error in CheckCards1:", err)
+			}
+
+			defer fmt.Println("Client exited!")
+			return
+		default:
+
+		}
+		fmt.Println("Enter a command:")
 		input, err := reader.ReadString('\n')
 		if err != nil {
 			fmt.Println("Error reading input:", err)
@@ -77,5 +104,11 @@ func main() {
 			clientfunc.PrintAvailableCommands(commands)
 		}
 	}
+
+	err := client.CheckCards()
+	if err != nil {
+		log.Println("error in CheckAll2 function returned from CheckCards:", err)
+	}
+
 	defer fmt.Println("Client exited!")
 }

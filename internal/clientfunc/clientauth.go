@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -61,6 +62,7 @@ func (c *Client) Register(input []string) {
 		c.Key = key[:]
 		fmt.Println("registered successfully")
 		c.CreateUserLoginFile(loginData.Login, loginData.Password)
+		c.DeleteLocalStorage()
 	case ErrUsernameIsTaken:
 		fmt.Println("Username is taken, please provide another")
 	default:
@@ -83,7 +85,23 @@ func (c *Client) Login(input []string) {
 			loginData.Password = data
 		}
 	}
+	// login online
+	err := c.loginOnline(loginData)
+	if err != nil {
+		fmt.Println("can't login offline:", err)
+		return
+	}
+	// logging offline
+	err = c.loginOffline(loginData)
+	if err != nil {
+		log.Println("error when trying to login offline: ", err)
+		return
+	}
+	c.Storage.InitStorage(c.Key)
+	fmt.Println("Successfully logged!")
+}
 
+func (c *Client) loginOnline(loginData auth.LoginData) error {
 	// logging into server
 	authcookie, err := c.sendLoginRequest(loginData)
 	switch err {
@@ -93,23 +111,17 @@ func (c *Client) Login(input []string) {
 		key := sha256.Sum256([]byte(loginData.Password))
 		c.Key = key[:]
 		c.CreateUserLoginFile(loginData.Login, loginData.Password)
+		return nil
 	case ErrWrongLoginData:
 		fmt.Println("wrong login credentials, try again")
-		return
+		return ErrWrongLoginData
 	case ErrServerIsDown:
-		fmt.Println("Server is down, try again later")
+		log.Println("Server is down, try again later")
 		c.AuthCookie = nil
+		return ErrServerIsDown
 	default:
-		fmt.Println("error when trying to login online: ", err)
+		return err
 	}
-
-	// logging offline
-	err = c.loginOffline(loginData)
-	if err != nil {
-		fmt.Println("error when trying to login offline: ", err)
-		return
-	}
-	fmt.Println("Successfully logged offline!")
 }
 
 func (c *Client) loginOffline(logincreds auth.LoginData) error {
@@ -134,6 +146,8 @@ func (c *Client) loginOffline(logincreds auth.LoginData) error {
 
 	//sucessfuly logged in
 	c.LoggedOffline = true
+	key := sha256.Sum256([]byte(logincreds.Password))
+	c.Key = key[:]
 	return nil
 }
 

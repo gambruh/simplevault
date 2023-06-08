@@ -35,22 +35,11 @@ func (c *Client) SetCardCommand(input []string) {
 		}
 	}
 
-	err := c.sendCardToDB(cardData)
-	switch err {
-	case ErrMetanameIsTaken:
-		fmt.Println("There are already card with this name in database. Please provide new cardname or edit current")
-	case ErrLoginRequired:
-		fmt.Println("Please login to the server")
-	case nil:
-		fmt.Println("Saved card to the vault")
-	default:
-		fmt.Println("error in client sending data to database in SetCardCommand:", err)
-	}
-
-	err = c.saveCardInStorage(cardData)
+	err := c.saveCardInStorage(cardData)
 	if err != nil {
 		fmt.Println("error in client saving data to storage in SetCardCommand:", err)
 	}
+	fmt.Printf("Card %s saved to the storage!\n", cardData.Cardname)
 }
 
 func (c *Client) GetCardCommand(input []string) {
@@ -65,21 +54,7 @@ func (c *Client) GetCardCommand(input []string) {
 
 	cardname := input[1]
 
-	card, err := c.getCardFromDB(cardname)
-	switch err {
-	case ErrDataNotFound:
-		fmt.Println("Card with that name not found in the DB")
-	case ErrLoginRequired:
-		fmt.Println("Please login to the server")
-	case ErrBadRequest:
-		fmt.Println("Please contact devs to change API interaction, wrong request")
-	case ErrServerIsDown:
-		fmt.Println("Internal server error")
-	case nil:
-		fmt.Printf("%+v\n", card)
-	}
-
-	card, err = c.getCardFromLocalStorage(cardname)
+	card, err := c.getCardFromStorage(cardname)
 	if err != nil {
 		if err == database.ErrDataNotFound {
 			fmt.Println("No data in local storage")
@@ -104,7 +79,7 @@ func (c *Client) ListCardsCommand(input []string) {
 		return
 	}
 
-	cards, err := c.listCardsFromDB()
+	cards, err := c.listCardsFromStorage()
 	if err != nil {
 		fmt.Println(err)
 	}

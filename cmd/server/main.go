@@ -24,5 +24,4 @@ func main() {
 	}
 
 	log.Println(server.ListenAndServe())
-
 }

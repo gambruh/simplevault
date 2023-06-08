@@ -31,11 +31,11 @@ type Storage interface {
 	SetLoginCred(username string, logincreds database.LoginCreds) error
 	//	SetNote(username string, note Note) error
 	//	SetBinary(username string, binary Binary) error
-	SetCard(username string, card database.Card) error
+	SetCard(username string, card database.EncryptedCard) error
 	GetLoginCred(username string, name string) (database.LoginCreds, error)
 	//	GetNote(username string, name string) (Note, error)
 	//	GetBinary(username string, name string) (Binary, error)
-	GetCard(username string, name string) (database.Card, error)
+	GetCard(username string, name string) (database.EncryptedCard, error)
 	ListLoginCreds(username string) ([]database.LoginCreds, error)
 	//	ListNotes(username string) ([]Note, error)
 	//	ListBinaries(username string) ([]Binary, error)
@@ -137,6 +137,9 @@ func (h *WebService) Login(w http.ResponseWriter, r *http.Request) {
 	switch err {
 	case nil:
 		//login and password are verified
+	case auth.ErrUserNotFound:
+		fmt.Println("Invalid login credentials:", data.Login)
+		w.WriteHeader(http.StatusUnauthorized)
 	case auth.ErrWrongPassword:
 		fmt.Println("Invalid login credentials:", data.Login)
 		w.WriteHeader(http.StatusUnauthorized)
@@ -194,7 +197,7 @@ func (h *WebService) AddLoginCreds(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *WebService) AddCard(w http.ResponseWriter, r *http.Request) {
-	var carddata database.Card
+	var carddata database.EncryptedCard
 
 	contentType := r.Header.Get("Content-type")
 	if contentType != "application/json" {
@@ -258,7 +261,7 @@ func (h *WebService) ListLoginCreds(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *WebService) GetCard(w http.ResponseWriter, r *http.Request) {
-	var carddata database.Card
+	var carddata database.EncryptedCard
 	username := r.Context().Value(config.UserID("userID"))
 
 	contentType := r.Header.Get("Content-type")

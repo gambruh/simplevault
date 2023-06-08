@@ -188,19 +188,13 @@ func (s *AuthDB) VerifyCredentials(login string, password string) error {
 	)
 
 	err := s.db.QueryRow(CheckUsernameQuery, login).Scan(&id)
-	switch err {
-	case sql.ErrNoRows:
-		return nil
-	case nil:
-	default:
-		log.Println("Unexpected case in checking user's credentials in database:", err)
-		return err
+	if err != nil {
+		return ErrUserNotFound
 	}
 
 	err = s.db.QueryRow(CheckPasswordQuery, id).Scan(&pass)
 	if err != nil {
-		log.Println("Unexpected case in checking user's password in database:", err)
-		return err
+		return ErrWrongPassword
 	}
 
 	check, err := argon2id.ComparePasswordAndHash(password, pass)

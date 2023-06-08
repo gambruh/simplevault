@@ -25,3 +25,8 @@ type Card struct {
 	ValidTill string `json:"valid till"`
 	Code      string `json:"code"`
 }
+
+type EncryptedCard struct {
+	Cardname string `json:"cardname"`
+	Data     string `json:"data"`
+}

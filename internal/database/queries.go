@@ -66,6 +66,17 @@ const createBinariesTableQuery = `
 	)
 `
 
+// UNIQUE constrains
+const createUniqueCardConstraint = `
+	ALTER TABLE gk_cards
+	ADD CONSTRAINT gk_unique_cardname UNIQUE (cardname, user_id)
+`
+
+const createUniqueNoteConstraint = `
+	ALTER TABLE gk_notes
+	ADD CONSTRAINT gk_unique_notename UNIQUE (name, user_id)
+`
+
 // set/get queries
 
 const listCardsQuery = `
@@ -76,8 +87,8 @@ const listCardsQuery = `
 `
 
 const setCardQuery = `
-	INSERT INTO gk_cards(cardname, number, name, surname, code, valid_till, user_id)
-	VALUES ($1,$2,$3,$4,$5,$6,(SELECT id FROM gk_users WHERE username=$7));
+	INSERT INTO gk_cards(cardname, data, user_id)
+	VALUES ($1,$2,(SELECT id FROM gk_users WHERE username=$3));
 `
 
 const setLoginCredsQuery = `
@@ -86,7 +97,7 @@ const setLoginCredsQuery = `
 `
 
 const getCardQuery = `
-	SELECT gk_cards.cardname, gk_cards.number, gk_cards.name, gk_cards.surname, gk_cards.valid_till, gk_cards.code
+	SELECT gk_cards.cardname, gk_cards.data
 	FROM gk_cards
 	JOIN gk_users ON gk_cards.user_id = gk_users.id
 	WHERE gk_cards.cardname=$1 AND gk_users.username=$2;
@@ -99,7 +110,8 @@ const CheckIDbyUsernameQuery = `
 `
 
 const checkCardNameQuery = `
-	SELECT cardname
+	SELECT gk_cards.cardname
 	FROM gk_cards
-	WHERE cardname = $1;
+	JOIN gk_users ON gk_cards.user_id = gk_users.id
+	WHERE gk_cards.cardname=$1 AND gk_users.username=$2;
 `

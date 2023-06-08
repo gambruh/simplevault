@@ -5,22 +5,21 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 
 	"github.com/gambruh/gophkeeper/internal/database"
 )
 
-// Card commands helpers
-
-func (c *Client) sendCardToDB(card database.Card) error {
+func (c *Client) sendCardToDB(encrCard database.EncryptedCard) error {
 	url := fmt.Sprintf("%s/api/cards/add", c.Server)
 
 	if !strings.HasPrefix(url, "http://") {
 		url = "http://" + url
 	}
 
-	jsbody, err := json.Marshal(card)
+	jsbody, err := json.Marshal(encrCard)
 	if err != nil {
 		return fmt.Errorf("error when marshaling json: %w", err)
 	}
@@ -46,14 +45,6 @@ func (c *Client) sendCardToDB(card database.Card) error {
 		return ErrMetanameIsTaken
 	case 500:
 		fmt.Println("internal server error")
-	}
-	return nil
-}
-
-func (c *Client) saveCardInStorage(card database.Card) error {
-	err := c.Storage.SaveCard(card, c.Key)
-	if err != nil {
-		return fmt.Errorf("error in saveCardInStorage:%w", err)
 	}
 	return nil
 }
@@ -87,12 +78,12 @@ func (c *Client) listCardsFromDB() (cards []string, err error) {
 	case 500:
 		return nil, ErrServerIsDown
 	}
-
+	//fmt.Println("cards list:", cards)
 	return cards, nil
 }
 
-func (c *Client) getCardFromDB(cardname string) (card database.Card, err error) {
-	var inCard database.Card
+func (c *Client) getCardFromDB(cardname string) (card database.EncryptedCard, err error) {
+	var inCard database.EncryptedCard
 	inCard.Cardname = cardname
 	url := fmt.Sprintf("%s/api/cards/get", c.Server)
 	if !strings.HasPrefix(url, "http://") {
@@ -101,18 +92,18 @@ func (c *Client) getCardFromDB(cardname string) (card database.Card, err error) 
 
 	jsbody, err := json.Marshal(inCard)
 	if err != nil {
-		return database.Card{}, fmt.Errorf("error when marshaling json in getCardFromDB: %w", err)
+		return database.EncryptedCard{}, fmt.Errorf("error when marshaling json in getCardFromDB: %w", err)
 	}
 	rbody := bytes.NewBuffer(jsbody)
 	r, err := http.NewRequest(http.MethodPost, url, rbody)
 	if err != nil {
-		return database.Card{}, fmt.Errorf("error when creating NewRequest in getCardFromDB: %w", err)
+		return database.EncryptedCard{}, fmt.Errorf("error when creating NewRequest in getCardFromDB: %w", err)
 	}
 	r.Header.Add("Content-Type", "application/json")
 	r.AddCookie(c.AuthCookie)
 	res, err := c.Client.Do(r)
 	if err != nil {
-		return database.Card{}, fmt.Errorf("error when sending request in getCardFromDB: %w", err)
+		return database.EncryptedCard{}, fmt.Errorf("error when sending request in getCardFromDB: %w", err)
 	}
 	defer res.Body.Close()
 
@@ -120,29 +111,48 @@ func (c *Client) getCardFromDB(cardname string) (card database.Card, err error) 
 	case 200:
 		err := json.NewDecoder(res.Body).Decode(&card)
 		if err != nil {
-			return database.Card{}, fmt.Errorf("error when decoding json in getCardFromDB: %w", err)
+			return database.EncryptedCard{}, fmt.Errorf("error when decoding json in getCardFromDB: %w", err)
 		}
 		return card, nil
 	case 204:
-		return database.Card{}, ErrDataNotFound
+		return database.EncryptedCard{}, ErrDataNotFound
 	case 400:
-		return database.Card{}, ErrBadRequest
+		return database.EncryptedCard{}, ErrBadRequest
 	case 401:
-		return database.Card{}, ErrLoginRequired
+		return database.EncryptedCard{}, ErrLoginRequired
 	case 500:
-		return database.Card{}, ErrServerIsDown
+		return database.EncryptedCard{}, ErrServerIsDown
 	default:
-		return database.Card{}, errors.New("unexpected error")
+		return database.EncryptedCard{}, errors.New("unexpected error")
 	}
-
 }
 
-func (c *Client) getCardFromLocalStorage(cardname string) (card database.Card, err error) {
-
-	card, err = c.Storage.GetCard(cardname, c.Key)
-	if err != nil {
-		return database.Card{}, err
+func (c *Client) GetCardFromDB(cardname string) {
+	card, err := c.getCardFromDB(cardname)
+	switch err {
+	case ErrDataNotFound:
+		fmt.Println("Card with that name not found in the DB")
+	case ErrLoginRequired:
+		fmt.Println("Please login to the server")
+	case ErrBadRequest:
+		fmt.Println("Please contact devs to change API interaction, wrong request")
+	case ErrServerIsDown:
+		fmt.Println("Internal server error")
+	case nil:
+		fmt.Printf("%+v\n", card)
 	}
+}
 
-	return card, nil
+func (c *Client) SendCardToDB(cardData database.EncryptedCard) {
+	err := c.sendCardToDB(cardData)
+	switch err {
+	case ErrMetanameIsTaken:
+		log.Println("There are already card with this name in database. Please provide new cardname or edit current")
+	case ErrLoginRequired:
+		log.Println("Please login to the server")
+	case nil:
+		log.Printf("Saved card %s to the vault\n", cardData.Cardname)
+	default:
+		log.Println("error in client sending data to database in SetCardCommand:", err)
+	}
 }

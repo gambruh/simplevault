@@ -10,7 +10,9 @@ import (
 )
 
 type Client struct {
-	Server        string
+	//server url in host:port format
+	Server string
+	// storage to store data offline
 	Storage       LocalStorage
 	Client        *http.Client
 	AuthCookie    *http.Cookie
@@ -21,7 +23,9 @@ type Client struct {
 type LocalStorage interface {
 	SaveCard(card database.Card, key []byte) error
 	GetCard(cardname string, key []byte) (card database.Card, err error)
-	ListCards(key []byte) (cards []string, err error)
+	ListCards() (cards []string, err error)
+	InitStorage(key []byte) error
+	DeleteLocalStorage() error
 }
 
 func NewClient() *Client {

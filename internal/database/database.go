@@ -17,11 +17,11 @@ type Storage interface {
 	SetLoginCred(username string, logincreds LoginCreds) error
 	//	SetNote(username string, note Note) error
 	//	SetBinary(username string, binary Binary) error
-	SetCard(username string, card Card) error
+	SetCard(username string, card EncryptedCard) error
 	GetLoginCred(username string, name string) (LoginCreds, error)
 	//	GetNote(username string, name string) (Note, error)
 	//	GetBinary(username string, name string) (Binary, error)
-	GetCard(username string, name string) (Card, error)
+	GetCard(username string, name string) (EncryptedCard, error)
 	ListLoginCreds(username string) ([]LoginCreds, error)
 	//	ListNotes(username string) ([]Note, error)
 	//	ListBinaries(username string) ([]Binary, error)
@@ -116,7 +116,18 @@ func (s *SQLdb) createLoginCredsTable() error {
 	err := s.checkTableExists("gk_logincreds")
 	if err == ErrTableDoesntExist {
 		_, err := s.DB.Exec(createLoginCredsTableQuery)
-		return err
+		if err != nil {
+			return err
+		}
+		_, err = s.DB.Exec(alterTableLC)
+		if err != nil {
+			return err
+		}
+		_, err = s.DB.Exec(alterTableLC2)
+		if err != nil {
+			return err
+		}
+
 	}
 	return nil
 }
@@ -125,7 +136,21 @@ func (s *SQLdb) createCardsTable() error {
 	err := s.checkTableExists("gk_cards")
 	if err == ErrTableDoesntExist {
 		_, err := s.DB.Exec(createCardsTableQuery)
-		return err
+		if err != nil {
+			return err
+		}
+		_, err = s.DB.Exec(createUniqueCardConstraint)
+		if err != nil {
+			return err
+		}
+		_, err = s.DB.Exec(encryptedCardsTable)
+		if err != nil {
+			return err
+		}
+		_, err = s.DB.Exec(addColumnData)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 
@@ -135,7 +160,13 @@ func (s *SQLdb) createNotesTable() error {
 	err := s.checkTableExists("gk_notes")
 	if err == ErrTableDoesntExist {
 		_, err := s.DB.Exec(createNotesTableQuery)
-		return err
+		if err != nil {
+			return err
+		}
+		_, err = s.DB.Exec(createUniqueNoteConstraint)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 
@@ -150,15 +181,15 @@ func (s *SQLdb) createBinariesTable() error {
 	return nil
 }
 
-func (s *SQLdb) SetCard(username string, cardData Card) error {
+func (s *SQLdb) SetCard(username string, cardData EncryptedCard) error {
 
 	var cardname string
-	err := s.DB.QueryRow(checkCardNameQuery, cardData.Cardname).Scan(&cardname)
+	err := s.DB.QueryRow(checkCardNameQuery, cardData.Cardname, username).Scan(&cardname)
 	if err != sql.ErrNoRows {
 		return ErrMetanameIsTaken
 	}
 
-	_, err = s.DB.Exec(setCardQuery, cardData.Cardname, cardData.Number, cardData.Name, cardData.Surname, cardData.ValidTill, cardData.Code, username)
+	_, err = s.DB.Exec(setCardQuery, cardData.Cardname, cardData.Data, username)
 	if err != nil {
 		return fmt.Errorf("error setting card data in SetCard:%w", err)
 	}
@@ -173,14 +204,14 @@ func (s *SQLdb) SetLoginCred(username string, loginData LoginCreds) error {
 	return nil
 }
 
-func (s *SQLdb) GetCard(username string, cardname string) (Card, error) {
-	var cardData Card
-	err := s.DB.QueryRow(getCardQuery, cardname, username).Scan(&cardData.Cardname, &cardData.Number, &cardData.Name, &cardData.Surname, &cardData.ValidTill, &cardData.Code)
+func (s *SQLdb) GetCard(username string, cardname string) (EncryptedCard, error) {
+	var cardData EncryptedCard
+	err := s.DB.QueryRow(getCardQuery, cardname, username).Scan(&cardData.Cardname, &cardData.Data)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return Card{}, ErrDataNotFound
+			return EncryptedCard{}, ErrDataNotFound
 		} else {
-			return Card{}, fmt.Errorf("error in GetCard:%w", err)
+			return EncryptedCard{}, fmt.Errorf("error in GetCard:%w", err)
 		}
 	}
 	return cardData, nil

@@ -3,6 +3,7 @@ package encrypt
 import (
 	"crypto/aes"
 	"crypto/cipher"
+	"encoding/hex"
 	"fmt"
 )
 
@@ -48,4 +49,20 @@ func DecryptData(encryptedData, key []byte) (decryptedData []byte, err error) {
 	}
 
 	return decryptedData, nil
+}
+
+func DecryptFromString(s string, key []byte) (decryptedData []byte, err error) {
+	dst, err := hex.DecodeString(s)
+	if err != nil {
+		return nil, fmt.Errorf("can't decode string in DecryptFromString:%w", err)
+	}
+	return DecryptData(dst, key)
+}
+
+func EncryptFromString(s string, key []byte) (decryptedData []byte, err error) {
+	dst, err := hex.DecodeString(s)
+	if err != nil {
+		return nil, fmt.Errorf("can't decode string in EncryptFromString:%w", err)
+	}
+	return EncryptData(dst, key)
 }
