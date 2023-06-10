@@ -14,6 +14,35 @@ import (
 
 const privatekeyfile = "privatekey.pem"
 
+func CompareTwoMaps(mapServer, mapLocal map[string]struct{}) (toUpload map[string]struct{}, toDownload map[string]struct{}) {
+	toUpload = make(map[string]struct{})
+	toDownload = make(map[string]struct{})
+
+	for iname := range mapServer {
+		if _, ok := mapLocal[iname]; !ok {
+			toDownload[iname] = struct{}{}
+		}
+	}
+
+	for iname := range mapLocal {
+		if _, ok := mapServer[iname]; !ok {
+			toUpload[iname] = struct{}{}
+		}
+	}
+
+	return toUpload, toDownload
+}
+
+func CreateMapFromList(list []string) (outputMap map[string]struct{}) {
+	outputMap = make(map[string]struct{})
+
+	for _, item := range list {
+		outputMap[item] = struct{}{}
+	}
+
+	return outputMap
+}
+
 func CreateConfigTLS() (*tls.Config, error) {
 	cert, err := tls.LoadX509KeyPair(config.Cfg.Certificate, privatekeyfile)
 	if err != nil {
@@ -84,21 +113,49 @@ func DecryptCardData(encrCard database.EncryptedCard, key []byte) (database.Card
 	return card, nil
 }
 
-func CompareTwoMaps(mapServer, mapLocal map[string]struct{}) (toUpload map[string]struct{}, toDownload map[string]struct{}) {
-	toUpload = make(map[string]struct{})
-	toDownload = make(map[string]struct{})
+func EncryptLoginCredsData(logincred database.LoginCreds, key []byte) (string, error) {
+	// concatenating data to string
+	logincredStr := logincred.Name + "," + logincred.Site + "," + logincred.Login + "," + logincred.Password
 
-	for iname := range mapServer {
-		if _, ok := mapLocal[iname]; !ok {
-			toDownload[iname] = struct{}{}
-		}
+	// encrypting the data
+	encrypted, err := encrypt.EncryptData([]byte(logincredStr), key)
+	if err != nil {
+		return "", err
+	}
+	// Encode the encrypted password in base64 for storage
+	encodedData := base64.StdEncoding.EncodeToString(encrypted)
+
+	return encodedData, nil
+}
+
+func DecryptLoginCredsData(encrData database.EncryptedData, key []byte) (database.LoginCreds, error) {
+	var logincred database.LoginCreds
+
+	decodedData, err := base64.StdEncoding.DecodeString(encrData.Data)
+	if err != nil {
+		return database.LoginCreds{}, err
 	}
 
-	for iname := range mapLocal {
-		if _, ok := mapServer[iname]; !ok {
-			toUpload[iname] = struct{}{}
-		}
+	decryptedData, err := encrypt.DecryptData(decodedData, key)
+	if err != nil {
+		return database.LoginCreds{}, err
 	}
 
-	return toUpload, toDownload
+	dst := string(decryptedData)
+
+	logincredArr := strings.Split(dst, ",")
+
+	for i, data := range logincredArr {
+		switch i {
+		case 0:
+			logincred.Name = encrData.Name
+		case 1:
+			logincred.Site = data
+		case 2:
+			logincred.Login = data
+		case 3:
+			logincred.Password = data
+		}
+	}
+	return logincred, nil
 }

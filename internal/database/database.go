@@ -14,17 +14,17 @@ import (
 )
 
 type Storage interface {
-	SetLoginCred(username string, logincreds LoginCreds) error
+	SetLoginCred(username string, logincreds EncryptedData) error
 	//	SetNote(username string, note Note) error
 	//	SetBinary(username string, binary Binary) error
 	SetCard(username string, card EncryptedCard) error
-	GetLoginCred(username string, name string) (LoginCreds, error)
-	//	GetNote(username string, name string) (Note, error)
-	//	GetBinary(username string, name string) (Binary, error)
+	GetLoginCred(username string, name string) (EncryptedData, error)
+	//	GetNote(username string, name string) (EncryptedData, error)
+	//	GetBinary(username string, name string) (EncryptedData, error)
 	GetCard(username string, name string) (EncryptedCard, error)
-	ListLoginCreds(username string) ([]LoginCreds, error)
-	//	ListNotes(username string) ([]Note, error)
-	//	ListBinaries(username string) ([]Binary, error)
+	ListLoginCreds(username string) ([]string, error)
+	//	ListNotes(username string) ([]string, error)
+	//	ListBinaries(username string) ([]string, error)
 	ListCards(username string) ([]string, error)
 }
 
@@ -115,16 +115,16 @@ func (s *SQLdb) checkTableExists(tablename string) error {
 func (s *SQLdb) createLoginCredsTable() error {
 	err := s.checkTableExists("gk_logincreds")
 	if err == ErrTableDoesntExist {
-		_, err := s.DB.Exec(createLoginCredsTableQuery)
-		if err != nil {
+		if _, err := s.DB.Exec(createLoginCredsTableQuery); err != nil {
 			return err
 		}
-		_, err = s.DB.Exec(alterTableLC)
-		if err != nil {
+		if _, err = s.DB.Exec(alterTableLC); err != nil {
 			return err
 		}
-		_, err = s.DB.Exec(alterTableLC2)
-		if err != nil {
+		if _, err = s.DB.Exec(alterTableLC2); err != nil {
+			return err
+		}
+		if _, err = s.DB.Exec(createUniqueLoginCredsConstraint); err != nil {
 			return err
 		}
 
@@ -167,17 +167,25 @@ func (s *SQLdb) createNotesTable() error {
 		if err != nil {
 			return err
 		}
+		_, err = s.DB.Exec(alterTableNotes)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
-
 }
 
 func (s *SQLdb) createBinariesTable() error {
 	err := s.checkTableExists("gk_binaries")
 	if err == ErrTableDoesntExist {
-		_, err := s.DB.Exec(createBinariesTableQuery)
-		return err
+		if _, err := s.DB.Exec(createBinariesTableQuery); err != nil {
+			return err
+		}
+		if _, err := s.DB.Exec(createUniqueBinaryConstraint); err != nil {
+			return err
+		}
 	}
+
 	return nil
 }
 
@@ -196,10 +204,10 @@ func (s *SQLdb) SetCard(username string, cardData EncryptedCard) error {
 	return nil
 }
 
-func (s *SQLdb) SetLoginCred(username string, loginData LoginCreds) error {
-	_, err := s.DB.Exec(setLoginCredsQuery, loginData.Name, loginData.Login, loginData.Password, loginData.Site, username)
+func (s *SQLdb) SetLoginCred(username string, loginData EncryptedData) error {
+	_, err := s.DB.Exec(setLoginCredsQuery, loginData.Name, loginData.Data, username)
 	if err != nil {
-		return fmt.Errorf("error setting card data in SetLoginCred:%w", err)
+		return fmt.Errorf("error setting data in SetLoginCred:%w", err)
 	}
 	return nil
 }
@@ -247,12 +255,45 @@ func (s *SQLdb) ListCards(username string) (cardnames []string, err error) {
 	return cardnames, nil
 }
 
-func (s *SQLdb) GetLoginCred(username string, loginname string) (LoginCreds, error) {
-
-	return LoginCreds{}, nil
+func (s *SQLdb) GetLoginCred(username string, loginname string) (logincred EncryptedData, err error) {
+	var encrData EncryptedData
+	err = s.DB.QueryRow(getLoginCredsQuery, loginname, username).Scan(&encrData.Name, &encrData.Data)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return EncryptedData{}, ErrDataNotFound
+		} else {
+			return EncryptedData{}, fmt.Errorf("error in GetLoginCred:%w", err)
+		}
+	}
+	return encrData, nil
 }
 
-func (s *SQLdb) ListLoginCreds(username string) (logincreds []LoginCreds, err error) {
+func (s *SQLdb) ListLoginCreds(username string) (logincrednames []string, err error) {
 
-	return nil, nil
+	rows, err := s.DB.Query(listLoginCredsQuery, username)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, ErrDataNotFound
+		}
+		return nil, fmt.Errorf("couldn't ask database in ListLoginCreds:%w", err)
+	}
+
+	for rows.Next() {
+		var itemname string
+
+		err := rows.Scan(&itemname)
+		if err != nil {
+			return nil, fmt.Errorf("error scanning in ListLoginCreds:%w", err)
+		}
+		logincrednames = append(logincrednames, itemname)
+
+	}
+
+	err = rows.Err()
+
+	if err != nil {
+		return nil, fmt.Errorf("error scanning with rows.Next() in ListLoginCreds:%w", err)
+	}
+
+	return logincrednames, nil
 }

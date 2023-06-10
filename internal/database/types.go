@@ -30,3 +30,8 @@ type EncryptedCard struct {
 	Cardname string `json:"cardname"`
 	Data     string `json:"data"`
 }
+
+type EncryptedData struct {
+	Name string `json:"name"`
+	Data string `json:"data"`
+}

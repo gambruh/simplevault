@@ -155,3 +155,117 @@ func (c *Client) SendCardToDB(cardData database.EncryptedCard) {
 		log.Println("error in client sending data to database in SetCardCommand:", err)
 	}
 }
+
+func (c *Client) sendLoginCredsToDB(encrData database.EncryptedData) error {
+	url := fmt.Sprintf("%s/api/logincreds/add", c.Server)
+
+	if !strings.HasPrefix(url, "http://") {
+		url = "http://" + url
+	}
+
+	jsbody, err := json.Marshal(encrData)
+	if err != nil {
+		return fmt.Errorf("error when marshaling json: %w", err)
+	}
+	rbody := bytes.NewBuffer(jsbody)
+	r, err := http.NewRequest(http.MethodPost, url, rbody)
+	if err != nil {
+		return fmt.Errorf("error when creating NewRequest: %w", err)
+	}
+	r.Header.Add("Content-Type", "application/json")
+	r.AddCookie(c.AuthCookie)
+	res, err := c.Client.Do(r)
+	if err != nil {
+		return fmt.Errorf("error when sending request in sendLoginCredsToDB: %w", err)
+	}
+	defer res.Body.Close()
+
+	switch res.StatusCode {
+	case 200:
+		return nil
+	case 401:
+		return ErrLoginRequired
+	case 409:
+		return ErrMetanameIsTaken
+	case 500:
+		fmt.Println("internal server error")
+	}
+	return nil
+}
+
+func (c *Client) listLoginCredsFromDB() (logincreds []string, err error) {
+	url := fmt.Sprintf("%s/api/logincreds/list", c.Server)
+	if !strings.HasPrefix(url, "http://") {
+		url = "http://" + url
+	}
+
+	r, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error when creating NewRequest: %w", err)
+	}
+	r.Header.Add("Content-Type", "application/json")
+	r.AddCookie(c.AuthCookie)
+	res, err := c.Client.Do(r)
+	if err != nil {
+		return nil, fmt.Errorf("error when sending request in listCardsFromDB: %w", err)
+	}
+	defer res.Body.Close()
+
+	switch res.StatusCode {
+	case 200:
+		err := json.NewDecoder(res.Body).Decode(&logincreds)
+		if err != nil {
+			return nil, fmt.Errorf("error when decoding json in listCardsFromDB: %w", err)
+		}
+	case 401:
+		return nil, ErrLoginRequired
+	case 500:
+		return nil, ErrServerIsDown
+	}
+	return logincreds, nil
+}
+
+func (c *Client) getLoginCredsFromDB(logincredname string) (encrData database.EncryptedData, err error) {
+	var input database.EncryptedData
+	input.Name = logincredname
+	url := fmt.Sprintf("%s/api/logincreds/get", c.Server)
+	if !strings.HasPrefix(url, "http://") {
+		url = "http://" + url
+	}
+
+	jsbody, err := json.Marshal(input)
+	if err != nil {
+		return database.EncryptedData{}, fmt.Errorf("error when marshaling json in getLoginCredsFromDB: %w", err)
+	}
+	rbody := bytes.NewBuffer(jsbody)
+	r, err := http.NewRequest(http.MethodPost, url, rbody)
+	if err != nil {
+		return database.EncryptedData{}, fmt.Errorf("error when creating NewRequest in getLoginCredsFromDB: %w", err)
+	}
+	r.Header.Add("Content-Type", "application/json")
+	r.AddCookie(c.AuthCookie)
+	res, err := c.Client.Do(r)
+	if err != nil {
+		return database.EncryptedData{}, fmt.Errorf("error when sending request in getLoginCredsFromDB: %w", err)
+	}
+	defer res.Body.Close()
+
+	switch res.StatusCode {
+	case 200:
+		err := json.NewDecoder(res.Body).Decode(&encrData)
+		if err != nil {
+			return database.EncryptedData{}, fmt.Errorf("error when decoding json in getLoginCredsFromDB: %w", err)
+		}
+		return encrData, nil
+	case 204:
+		return database.EncryptedData{}, ErrDataNotFound
+	case 400:
+		return database.EncryptedData{}, ErrBadRequest
+	case 401:
+		return database.EncryptedData{}, ErrLoginRequired
+	case 500:
+		return database.EncryptedData{}, ErrServerIsDown
+	default:
+		return database.EncryptedData{}, errors.New("unexpected error")
+	}
+}

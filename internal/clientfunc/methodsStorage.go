@@ -47,3 +47,32 @@ func (c *Client) DeleteLocalStorage() {
 	}
 
 }
+
+func (c *Client) saveLoginCredsInStorage(logincreds database.LoginCreds) error {
+
+	err := c.Storage.SaveLoginCreds(logincreds, c.Key)
+	if err != nil {
+		return fmt.Errorf("error in saveCardInStorage:%w", err)
+	}
+	return nil
+
+}
+
+func (c *Client) getLoginCredsFromStorage(logincredname string) (logincred database.LoginCreds, err error) {
+	logincred, err = c.Storage.GetLoginCreds(logincredname, c.Key)
+	if err != nil {
+		fmt.Println("err in getLoginCredsFromStorage is:", err)
+		return database.LoginCreds{}, err
+	}
+
+	return logincred, nil
+}
+
+func (c *Client) listLoginCredsFromStorage() (logincreds []string, err error) {
+	logincreds, err = c.Storage.ListLoginCreds()
+	if err != nil {
+		return nil, err
+	}
+	//fmt.Println("cards from storage:", cards)
+	return logincreds, nil
+}

@@ -50,14 +50,54 @@ func NewStorage() *LocalStorage {
 func (s *LocalStorage) InitStorage(key []byte) error {
 	list, err := s.ListCardsFromFile(key)
 	if err != nil {
-		s.DeleteLocalStorage()
+		s.deleteCardsFile()
 		s.Cards = []string{}
-		return nil
+	} else {
+		s.Cards = list
 	}
-	s.Cards = list
+
+	list, err = s.ListLoginCredsFromFile(key)
+	if err != nil {
+		s.deleteLoginCredsFile()
+		s.Logincreds = []string{}
+		return nil
+	} else {
+		s.Logincreds = list
+	}
+
 	return nil
 }
 
+func (s *LocalStorage) DeleteLocalStorage() error {
+
+	if err := s.deleteCardsFile(); err != nil {
+		return err
+	}
+
+	if err := s.deleteLoginCredsFile(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *LocalStorage) deleteCardsFile() error {
+	err := os.Remove(config.ClientCfg.LocalStorage + cardsFile)
+	if err != nil {
+		return fmt.Errorf("can't delete local cache:%w", err)
+	}
+	return nil
+}
+
+func (s *LocalStorage) deleteLoginCredsFile() error {
+	err := os.Remove(config.ClientCfg.LocalStorage + loginCredsFile)
+	if err != nil {
+		return fmt.Errorf("can't delete local cache:%w", err)
+	}
+	return nil
+}
+
+// SaveCard method encrypts and saves card data to the storage
 func (s *LocalStorage) SaveCard(card database.Card, key []byte) error {
 	s.Mu.Lock()
 	defer s.Mu.Unlock()
@@ -106,7 +146,7 @@ func (s *LocalStorage) GetCard(cardname string, key []byte) (card database.Card,
 	// opening the localstorage file
 	file, err := os.OpenFile(config.ClientCfg.LocalStorage+cardsFile, os.O_RDONLY|os.O_CREATE, 0600)
 	if err != nil {
-		return database.Card{}, fmt.Errorf("error in SaveCard when opening file:%w", err)
+		return database.Card{}, fmt.Errorf("error in GetCard when opening file:%w", err)
 	}
 	defer file.Close()
 
@@ -144,9 +184,9 @@ func (s *LocalStorage) GetCard(cardname string, key []byte) (card database.Card,
 }
 
 func (s *LocalStorage) ListCards() (cards []string, err error) {
-
 	return s.Cards, nil
 }
+
 func (s *LocalStorage) ListCardsFromFile(key []byte) (cards []string, err error) {
 	s.Mu.Lock()
 	defer s.Mu.Unlock()
@@ -196,11 +236,167 @@ func (s *LocalStorage) lookupCard(cardname string) bool {
 	return false
 }
 
-func (s *LocalStorage) DeleteLocalStorage() error {
-
-	err := os.Remove(config.ClientCfg.LocalStorage + cardsFile)
-	if err != nil {
-		return fmt.Errorf("can't delete local cache:%w", err)
+func (s *LocalStorage) SaveLoginCreds(logincreds database.LoginCreds, key []byte) error {
+	s.Mu.Lock()
+	defer s.Mu.Unlock()
+	// check if the card with this name is in storage. Return error if yes
+	if check := s.lookupLoginCreds(logincreds.Name); check {
+		return ErrMetanameIsTaken
 	}
+
+	// add name to check array
+	s.Logincreds = append(s.Logincreds, logincreds.Name)
+
+	file, err := os.OpenFile(config.ClientCfg.LocalStorage+loginCredsFile, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0600)
+	if err != nil {
+		return fmt.Errorf("error in SaveCard when opening file:%w", err)
+	}
+	defer file.Close()
+
+	// concatenating string
+	logincredsStr := logincreds.Name + "," + logincreds.Site + "," + logincreds.Login + "," + logincreds.Password
+
+	// encrypting the data
+	encrypted, err := encrypt.EncryptData([]byte(logincredsStr), key)
+	if err != nil {
+		return err
+	}
+	// encoding the encrypted data in base64 for storage
+	encodedData := base64.StdEncoding.EncodeToString(encrypted)
+
+	// saving data to the filestorage
+	_, err = fmt.Fprintf(file, "%s\n", encodedData)
+	if err != nil {
+		fmt.Println("Error writing to file:", err)
+		return fmt.Errorf("error in SaveLoginCreds when writing in file:%w", err)
+	}
+
 	return nil
+}
+
+func (s *LocalStorage) lookupLoginCreds(logincreds string) bool {
+
+	for _, l := range s.Logincreds {
+		if l == logincreds {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *LocalStorage) GetLoginCreds(logincredsname string, key []byte) (logincreds database.LoginCreds, err error) {
+	s.Mu.Lock()
+	defer s.Mu.Unlock()
+	// check if the card with this name is in storage. Return error if yes
+	if check := s.lookupLoginCreds(logincredsname); !check {
+		return database.LoginCreds{}, ErrNoData
+	}
+
+	// opening the localstorage file
+	file, err := os.OpenFile(config.ClientCfg.LocalStorage+loginCredsFile, os.O_RDONLY|os.O_CREATE, 0600)
+	if err != nil {
+		return database.LoginCreds{}, fmt.Errorf("error in GetLoginCreds when opening file:%w", err)
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	// reading with Scanner each line, until encounter needed one
+	for scanner.Scan() {
+		line := scanner.Text()
+		dst, err := base64.StdEncoding.DecodeString(line)
+		if err != nil {
+			return database.LoginCreds{}, err
+		}
+
+		decryptedData, err := encrypt.DecryptData(dst, key)
+		if err != nil {
+			return database.LoginCreds{}, err
+		}
+
+		//Getting the string, splitting it by comma to get values
+		loginCredStr := string(decryptedData)
+		loginCredArr := strings.Split(loginCredStr, ",")
+
+		if loginCredArr[0] == logincredsname {
+			logincreds.Name = loginCredArr[0]
+			logincreds.Site = loginCredArr[1]
+			logincreds.Login = loginCredArr[2]
+			logincreds.Password = loginCredArr[3]
+
+			return logincreds, nil
+		}
+	}
+	return database.LoginCreds{}, database.ErrDataNotFound
+}
+
+func (s *LocalStorage) ListLoginCreds() (logincreds []string, err error) {
+	return s.Logincreds, nil
+}
+
+func (s *LocalStorage) ListLoginCredsFromFile(key []byte) (logincreds []string, err error) {
+	s.Mu.Lock()
+	defer s.Mu.Unlock()
+	// opening the localstorage file
+	file, err := os.OpenFile(config.ClientCfg.LocalStorage+loginCredsFile, os.O_RDONLY|os.O_CREATE, 0600)
+	if err != nil {
+		return nil, fmt.Errorf("error in ListLoginCredsFromFile when opening file:%w", err)
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+
+	for scanner.Scan() {
+		line := scanner.Text()
+
+		dst, err := base64.StdEncoding.DecodeString(line)
+		if err != nil {
+			return nil, err
+		}
+		decryptedData, err := encrypt.DecryptData(dst, key)
+		if err != nil {
+			return nil, err
+		}
+
+		//Getting the card string, splitting it by comma to get values
+		loginCredStr := string(decryptedData)
+		loginCredArr := strings.Split(loginCredStr, ",")
+
+		// cardArr[0] is the cardname
+		logincreds = append(logincreds, loginCredArr[0])
+	}
+
+	if len(logincreds) == 0 {
+		return nil, ErrNoData
+	}
+
+	return logincreds, nil
+}
+
+// Notes processing methods
+func (s *LocalStorage) SaveNote(note database.Note, key []byte) error {
+
+	return nil
+}
+
+func (s *LocalStorage) GetNote(notename string, key []byte) (note database.Note, err error) {
+
+	return database.Note{}, nil
+}
+
+func (s *LocalStorage) ListNotes() (notes []string, err error) {
+	return s.Notes, nil
+}
+
+// Binaries processing methods
+
+func (s *LocalStorage) SaveBinary(binary database.Binary, key []byte) error {
+	return nil
+}
+
+func (s *LocalStorage) GetBinary(binaryname string, key []byte) (binary database.Binary, err error) {
+	return database.Binary{}, nil
+}
+
+func (s *LocalStorage) ListBinaries() (binaries []string, err error) {
+	return s.Binaries, nil
 }

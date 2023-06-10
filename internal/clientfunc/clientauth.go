@@ -85,11 +85,11 @@ func (c *Client) Login(input []string) {
 			loginData.Password = data
 		}
 	}
+
 	// login online
 	err := c.loginOnline(loginData)
 	if err != nil {
-		fmt.Println("can't login offline:", err)
-		return
+		fmt.Println("can't login online:", err)
 	}
 	// logging offline
 	err = c.loginOffline(loginData)
@@ -98,6 +98,7 @@ func (c *Client) Login(input []string) {
 		return
 	}
 	c.Storage.InitStorage(c.Key)
+	c.checkCards()
 	fmt.Println("Successfully logged!")
 }
 
@@ -106,7 +107,6 @@ func (c *Client) loginOnline(loginData auth.LoginData) error {
 	authcookie, err := c.sendLoginRequest(loginData)
 	switch err {
 	case nil:
-		fmt.Println("Logged on the server!")
 		c.AuthCookie = authcookie
 		key := sha256.Sum256([]byte(loginData.Password))
 		c.Key = key[:]

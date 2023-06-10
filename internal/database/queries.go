@@ -66,17 +66,6 @@ const createBinariesTableQuery = `
 	)
 `
 
-// UNIQUE constrains
-const createUniqueCardConstraint = `
-	ALTER TABLE gk_cards
-	ADD CONSTRAINT gk_unique_cardname UNIQUE (cardname, user_id)
-`
-
-const createUniqueNoteConstraint = `
-	ALTER TABLE gk_notes
-	ADD CONSTRAINT gk_unique_notename UNIQUE (name, user_id)
-`
-
 // set/get queries
 
 const listCardsQuery = `
@@ -89,11 +78,6 @@ const listCardsQuery = `
 const setCardQuery = `
 	INSERT INTO gk_cards(cardname, data, user_id)
 	VALUES ($1,$2,(SELECT id FROM gk_users WHERE username=$3));
-`
-
-const setLoginCredsQuery = `
-	INSERT INTO gk_logincreds(name, login, password, site, user_id)
-	VALUES ($1,$2,$3,$4,(SELECT id FROM gk_users WHERE username=$5));
 `
 
 const getCardQuery = `
@@ -114,4 +98,23 @@ const checkCardNameQuery = `
 	FROM gk_cards
 	JOIN gk_users ON gk_cards.user_id = gk_users.id
 	WHERE gk_cards.cardname=$1 AND gk_users.username=$2;
+`
+
+const setLoginCredsQuery = `
+	INSERT INTO gk_logincreds(name, data, user_id)
+	VALUES ($1,$2,(SELECT id FROM gk_users WHERE username=$3));
+`
+
+const getLoginCredsQuery = `
+	SELECT gk_logincreds.name, gk_logincreds.data 
+	FROM gk_logincreds
+	JOIN gk_users ON gk_logincreds.user_id = gk_users.id
+	WHERE gk_logincreds.name=$1 AND gk_users.username=$2;
+`
+
+const listLoginCredsQuery = `
+	SELECT gk_logincreds.name
+	FROM gk_logincreds
+	JOIN gk_users ON gk_logincreds.user_id = gk_users.id
+	WHERE gk_users.username = $1;
 `

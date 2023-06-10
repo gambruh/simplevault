@@ -28,17 +28,17 @@ type AuthStorage interface {
 }
 
 type Storage interface {
-	SetLoginCred(username string, logincreds database.LoginCreds) error
+	SetLoginCred(username string, logincreds database.EncryptedData) error
 	//	SetNote(username string, note Note) error
 	//	SetBinary(username string, binary Binary) error
 	SetCard(username string, card database.EncryptedCard) error
-	GetLoginCred(username string, name string) (database.LoginCreds, error)
+	GetLoginCred(username string, name string) (database.EncryptedData, error)
 	//	GetNote(username string, name string) (Note, error)
 	//	GetBinary(username string, name string) (Binary, error)
 	GetCard(username string, name string) (database.EncryptedCard, error)
-	ListLoginCreds(username string) ([]database.LoginCreds, error)
-	//	ListNotes(username string) ([]Note, error)
-	//	ListBinaries(username string) ([]Binary, error)
+	ListLoginCreds(username string) ([]string, error)
+	//	ListNotes(username string) ([]string, error)
+	//	ListBinaries(username string) ([]string, error)
 	ListCards(username string) ([]string, error)
 }
 
@@ -169,7 +169,7 @@ func (h *WebService) Login(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *WebService) AddLoginCreds(w http.ResponseWriter, r *http.Request) {
-	var logincred database.LoginCreds
+	var logincred database.EncryptedData
 
 	contentType := r.Header.Get("Content-type")
 	if contentType != "application/json" {

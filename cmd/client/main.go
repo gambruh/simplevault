@@ -46,11 +46,14 @@ func main() {
 
 	// Define available commands
 	commands := map[string]func([]string){
-		"register":  client.Register,
-		"login":     client.Login,
-		"setcard":   client.SetCardCommand,
-		"getcard":   client.GetCardCommand,
-		"listcards": client.ListCardsCommand,
+		"register":       client.Register,
+		"login":          client.Login,
+		"setcard":        client.SetCardCommand,
+		"getcard":        client.GetCardCommand,
+		"listcards":      client.ListCardsCommand,
+		"setlogincreds":  client.SetLoginCredsCommand,
+		"getlogincreds":  client.GetLoginCredsCommand,
+		"listlogincreds": client.ListLoginCredsCommand,
 	}
 
 	// goroutine for data synchronization
@@ -108,7 +111,7 @@ func main() {
 	}()
 
 	wgShutdown.Wait()
-	err := client.CheckCards()
+	err := client.CheckAll()
 	if err != nil {
 		log.Println("error in CheckAll2 function returned from CheckCards:", err)
 	}

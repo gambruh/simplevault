@@ -2,7 +2,6 @@ package clientfunc
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"sync"
 	"time"
@@ -20,17 +19,30 @@ func (c *Client) DataChecker(context context.Context, ticker *time.Ticker, wgShu
 		case <-context.Done():
 			return
 		case <-ticker.C:
-			err := c.CheckCards()
+			err := c.checkCards()
 			if err != nil {
-				log.Println("error in CheckAll function returned from CheckCards:", err)
+				log.Println("error in DataChecker function returned from CheckCards:", err)
 			}
-			fmt.Println("vault synced!")
 		}
 	}
-
 }
 
-func (c *Client) CheckCards() error {
+func (c *Client) CheckAll() error {
+
+	err := c.checkCards()
+	if err != nil {
+		return err
+	}
+
+	err = c.checkLoginCreds()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *Client) checkCards() error {
 	if c.AuthCookie == nil {
 		return nil
 	}
@@ -44,16 +56,8 @@ func (c *Client) CheckCards() error {
 		return err
 	}
 
-	mapLocal := make(map[string]struct{})
-	mapServer := make(map[string]struct{})
-
-	for _, cardname := range cardsLocal {
-		mapLocal[cardname] = struct{}{}
-	}
-
-	for _, cardname := range cardsDB {
-		mapServer[cardname] = struct{}{}
-	}
+	mapLocal := helpers.CreateMapFromList(cardsLocal)
+	mapServer := helpers.CreateMapFromList(cardsDB)
 
 	toUpload, toDownload := helpers.CompareTwoMaps(mapServer, mapLocal)
 
@@ -87,6 +91,64 @@ func (c *Client) CheckCards() error {
 		}
 
 		err = c.saveCardInStorage(card)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (c *Client) checkLoginCreds() error {
+	if c.AuthCookie == nil {
+		return nil
+	}
+
+	loginCredsDB, err := c.listLoginCredsFromDB()
+	if err != nil {
+		return err
+	}
+
+	loginCredsLocal, err := c.listLoginCredsFromStorage()
+	if err != nil {
+		return err
+	}
+
+	mapLocal := helpers.CreateMapFromList(loginCredsLocal)
+	mapServer := helpers.CreateMapFromList(loginCredsDB)
+
+	toUpload, toDownload := helpers.CompareTwoMaps(mapServer, mapLocal)
+
+	for logincredname := range toUpload {
+		var eLoginCred database.EncryptedData
+		logincred, err := c.getLoginCredsFromStorage(logincredname)
+		if err != nil {
+			return err
+		}
+		eLoginCred.Data, err = helpers.EncryptLoginCredsData(logincred, c.Key)
+		if err != nil {
+			return err
+		}
+		eLoginCred.Name = logincred.Name
+		err = c.sendLoginCredsToDB(eLoginCred)
+		if err != nil {
+			return err
+		}
+	}
+
+	for logincredname := range toDownload {
+		eLoginCred, err := c.getLoginCredsFromDB(logincredname)
+
+		if err != nil {
+			return err
+		}
+
+		logincred, err := helpers.DecryptLoginCredsData(eLoginCred, c.Key)
+		if err != nil {
+			return err
+		}
+
+		err = c.saveLoginCredsInStorage(logincred)
 		if err != nil {
 			return err
 		}
