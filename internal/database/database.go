@@ -8,23 +8,23 @@ import (
 	"log"
 	"time"
 
-	_ "github.com/lib/pq"
+	"github.com/lib/pq"
 
 	"github.com/gambruh/gophkeeper/internal/config"
 )
 
 type Storage interface {
 	SetLoginCred(username string, logincreds EncryptedData) error
-	//	SetNote(username string, note Note) error
-	//	SetBinary(username string, binary Binary) error
+	SetNote(username string, note EncryptedData) error
+	SetBinary(username string, binary Binary) error
 	SetCard(username string, card EncryptedCard) error
 	GetLoginCred(username string, name string) (EncryptedData, error)
-	//	GetNote(username string, name string) (EncryptedData, error)
-	//	GetBinary(username string, name string) (EncryptedData, error)
+	GetNote(username string, name string) (EncryptedData, error)
+	GetBinary(username string, name string) (Binary, error)
 	GetCard(username string, name string) (EncryptedCard, error)
 	ListLoginCreds(username string) ([]string, error)
-	//	ListNotes(username string) ([]string, error)
-	//	ListBinaries(username string) ([]string, error)
+	ListNotes(username string) ([]string, error)
+	ListBinaries(username string) ([]string, error)
 	ListCards(username string) ([]string, error)
 }
 
@@ -204,14 +204,6 @@ func (s *SQLdb) SetCard(username string, cardData EncryptedCard) error {
 	return nil
 }
 
-func (s *SQLdb) SetLoginCred(username string, loginData EncryptedData) error {
-	_, err := s.DB.Exec(setLoginCredsQuery, loginData.Name, loginData.Data, username)
-	if err != nil {
-		return fmt.Errorf("error setting data in SetLoginCred:%w", err)
-	}
-	return nil
-}
-
 func (s *SQLdb) GetCard(username string, cardname string) (EncryptedCard, error) {
 	var cardData EncryptedCard
 	err := s.DB.QueryRow(getCardQuery, cardname, username).Scan(&cardData.Cardname, &cardData.Data)
@@ -255,6 +247,14 @@ func (s *SQLdb) ListCards(username string) (cardnames []string, err error) {
 	return cardnames, nil
 }
 
+func (s *SQLdb) SetLoginCred(username string, loginData EncryptedData) error {
+	_, err := s.DB.Exec(setLoginCredsQuery, loginData.Name, loginData.Data, username)
+	if err != nil {
+		return fmt.Errorf("error setting data in SetLoginCred:%w", err)
+	}
+	return nil
+}
+
 func (s *SQLdb) GetLoginCred(username string, loginname string) (logincred EncryptedData, err error) {
 	var encrData EncryptedData
 	err = s.DB.QueryRow(getLoginCredsQuery, loginname, username).Scan(&encrData.Name, &encrData.Data)
@@ -296,4 +296,113 @@ func (s *SQLdb) ListLoginCreds(username string) (logincrednames []string, err er
 	}
 
 	return logincrednames, nil
+}
+
+func (s *SQLdb) SetNote(username string, data EncryptedData) error {
+	_, err := s.DB.Exec(setNoteQuery, data.Name, data.Data, username)
+	if err != nil {
+		return fmt.Errorf("error setting data in SetLoginCred:%w", err)
+	}
+	return nil
+}
+
+func (s *SQLdb) GetNote(username string, notename string) (encrData EncryptedData, err error) {
+
+	err = s.DB.QueryRow(getNoteQuery, notename, username).Scan(&encrData.Name, &encrData.Data)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return EncryptedData{}, ErrDataNotFound
+		} else {
+			return EncryptedData{}, fmt.Errorf("error in GetLoginCred:%w", err)
+		}
+	}
+	return encrData, nil
+}
+
+func (s *SQLdb) ListNotes(username string) (notenames []string, err error) {
+
+	rows, err := s.DB.Query(listNotesQuery, username)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, ErrDataNotFound
+		}
+		return nil, fmt.Errorf("couldn't ask database in ListLoginCreds:%w", err)
+	}
+
+	for rows.Next() {
+		var itemname string
+
+		err := rows.Scan(&itemname)
+		if err != nil {
+			return nil, fmt.Errorf("error scanning in ListLoginCreds:%w", err)
+		}
+		notenames = append(notenames, itemname)
+
+	}
+
+	err = rows.Err()
+
+	if err != nil {
+		return nil, fmt.Errorf("error scanning with rows.Next() in ListLoginCreds:%w", err)
+	}
+
+	return notenames, nil
+}
+
+func (s *SQLdb) SetBinary(username string, binary Binary) error {
+	_, err := s.DB.Exec(setBinaryQuery, binary.Name, binary.Data, username)
+	if err != nil {
+		return fmt.Errorf("error setting data in SetLoginCred:%w", err)
+	}
+	return nil
+}
+
+func (s *SQLdb) GetBinary(username string, binaryname string) (binary Binary, err error) {
+
+	err = s.DB.QueryRow(getBinaryQuery, binaryname, username).Scan(&binary.Name, &binary.Data)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return Binary{}, ErrDataNotFound
+		} else {
+			return Binary{}, fmt.Errorf("error in GetLoginCred:%w", err)
+		}
+	}
+	return binary, nil
+}
+
+func (s *SQLdb) ListBinaries(username string) (binarynames []string, err error) {
+
+	rows, err := s.DB.Query(listBinariesQuery, username)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, ErrDataNotFound
+		}
+		return nil, fmt.Errorf("couldn't ask database in ListBinaries:%w", err)
+	}
+
+	for rows.Next() {
+		var itemname string
+
+		err := rows.Scan(&itemname)
+		if err != nil {
+			return nil, fmt.Errorf("error scanning in ListBinaries:%w", err)
+		}
+		binarynames = append(binarynames, itemname)
+
+	}
+
+	err = rows.Err()
+
+	if err != nil {
+		return nil, fmt.Errorf("error scanning with rows.Next() in ListBinaries:%w", err)
+	}
+
+	return binarynames, nil
+}
+
+func IsUniqueConstraintViolation(err error) bool {
+	if pgErr, ok := err.(*pq.Error); ok {
+		return pgErr.Code == "23505"
+	}
+	return false
 }

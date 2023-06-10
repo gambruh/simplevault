@@ -23,7 +23,6 @@ var (
 )
 
 func main() {
-
 	// вывод информации о компиляции
 	compileinfo.PrintCompileInfo(buildVersion, buildDate, buildCommit)
 
@@ -54,12 +53,18 @@ func main() {
 		"setlogincreds":  client.SetLoginCredsCommand,
 		"getlogincreds":  client.GetLoginCredsCommand,
 		"listlogincreds": client.ListLoginCredsCommand,
+		"setnote":        client.SetNoteCommand,
+		"getnote":        client.GetNoteCommand,
+		"listnotes":      client.ListNotesCommand,
+		"setbinary":      client.SetBinaryCommand,
+		"getbinary":      client.GetBinaryCommand,
+		"listbinaries":   client.ListBinariesCommand,
 	}
 
 	// goroutine for data synchronization
 	go client.DataChecker(ctxShutdown, syncTime, &wgShutdown)
 
-	fmt.Println("write help to get commands list")
+	fmt.Println("Write help to get commands list")
 
 	go func() {
 		defer wgShutdown.Done()
@@ -93,7 +98,7 @@ func main() {
 			}
 
 			// Get the command name
-			inpt := strings.Split(input, " ")
+			inpt := strings.SplitN(input, " ", 2)
 			if len(inpt) < 1 {
 				fmt.Println("Please specify a command.")
 				clientfunc.PrintAvailableCommands(commands)
@@ -113,7 +118,7 @@ func main() {
 	wgShutdown.Wait()
 	err := client.CheckAll()
 	if err != nil {
-		log.Println("error in CheckAll2 function returned from CheckCards:", err)
+		log.Println("error in CheckAll function:", err)
 	}
 
 	defer fmt.Println("Client exited!")

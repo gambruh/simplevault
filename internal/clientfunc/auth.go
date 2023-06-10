@@ -14,6 +14,7 @@ import (
 	"github.com/gambruh/gophkeeper/internal/argon2id"
 	"github.com/gambruh/gophkeeper/internal/auth"
 	"github.com/gambruh/gophkeeper/internal/config"
+	"github.com/gambruh/gophkeeper/internal/helpers"
 )
 
 const userdata = "./userdata/user.json"
@@ -38,6 +39,7 @@ func getUserDataFromFile() (auth.LoginData, error) {
 }
 
 func (c *Client) Register(input []string) {
+	input = helpers.SplitFurther(input)
 	if len(input) != 3 {
 		printRegisterSyntax()
 		return
@@ -61,7 +63,7 @@ func (c *Client) Register(input []string) {
 		key := sha256.Sum256([]byte(loginData.Password))
 		c.Key = key[:]
 		fmt.Println("registered successfully")
-		c.CreateUserLoginFile(loginData.Login, loginData.Password)
+		c.createUserLoginFile(loginData.Login, loginData.Password)
 		c.DeleteLocalStorage()
 	case ErrUsernameIsTaken:
 		fmt.Println("Username is taken, please provide another")
@@ -71,6 +73,7 @@ func (c *Client) Register(input []string) {
 }
 
 func (c *Client) Login(input []string) {
+	input = helpers.SplitFurther(input)
 	if len(input) != 3 {
 		printLoginSyntax()
 		return
@@ -98,7 +101,7 @@ func (c *Client) Login(input []string) {
 		return
 	}
 	c.Storage.InitStorage(c.Key)
-	c.checkCards()
+	c.CheckAll()
 	fmt.Println("Successfully logged!")
 }
 
@@ -110,7 +113,7 @@ func (c *Client) loginOnline(loginData auth.LoginData) error {
 		c.AuthCookie = authcookie
 		key := sha256.Sum256([]byte(loginData.Password))
 		c.Key = key[:]
-		c.CreateUserLoginFile(loginData.Login, loginData.Password)
+		c.createUserLoginFile(loginData.Login, loginData.Password)
 		return nil
 	case ErrWrongLoginData:
 		fmt.Println("wrong login credentials, try again")
@@ -243,7 +246,7 @@ func (c *Client) sendLoginRequest(login auth.LoginData) (*http.Cookie, error) {
 	}
 }
 
-func (c *Client) CreateUserLoginFile(username, password string) error {
+func (c *Client) createUserLoginFile(username, password string) error {
 
 	file, err := os.OpenFile(config.ClientCfg.UserData, os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0600)
 	if err != nil {

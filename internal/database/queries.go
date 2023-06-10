@@ -118,3 +118,41 @@ const listLoginCredsQuery = `
 	JOIN gk_users ON gk_logincreds.user_id = gk_users.id
 	WHERE gk_users.username = $1;
 `
+
+const setNoteQuery = `
+	INSERT INTO gk_notes(name, data, user_id)
+	VALUES ($1,$2,(SELECT id FROM gk_users WHERE username=$3));
+`
+
+const getNoteQuery = `
+	SELECT gk_notes.name, gk_notes.data 
+	FROM gk_notes
+	JOIN gk_users ON gk_notes.user_id = gk_users.id
+	WHERE gk_notes.name=$1 AND gk_users.username=$2;
+`
+
+const listNotesQuery = `
+	SELECT gk_notes.name
+	FROM gk_notes
+	JOIN gk_users ON gk_notes.user_id = gk_users.id
+	WHERE gk_users.username = $1;
+`
+
+const setBinaryQuery = `
+	INSERT INTO gk_binaries(name, data, user_id)
+	VALUES ($1,$2,(SELECT id FROM gk_users WHERE username=$3));
+`
+
+const getBinaryQuery = `
+	SELECT gk_binaries.name, gk_binaries.data 
+	FROM gk_binaries
+	JOIN gk_users ON gk_binaries.user_id = gk_users.id
+	WHERE gk_binaries.name=$1 AND gk_users.username=$2;
+`
+
+const listBinariesQuery = `
+	SELECT gk_binaries.name
+	FROM gk_binaries
+	JOIN gk_users ON gk_binaries.user_id = gk_users.id
+	WHERE gk_users.username = $1;
+`

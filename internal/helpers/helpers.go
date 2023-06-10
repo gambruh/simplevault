@@ -1,10 +1,14 @@
 package helpers
 
 import (
+	"bufio"
 	"crypto/tls"
 	"encoding/base64"
+	"errors"
 	"fmt"
+	"io"
 	"net"
+	"os"
 	"strings"
 
 	"github.com/gambruh/gophkeeper/internal/config"
@@ -13,6 +17,11 @@ import (
 )
 
 const privatekeyfile = "privatekey.pem"
+
+var (
+	ErrWrongFile = errors.New("file not found")
+	ErrEmptyName = errors.New("metaname can't be empty")
+)
 
 func CompareTwoMaps(mapServer, mapLocal map[string]struct{}) (toUpload map[string]struct{}, toDownload map[string]struct{}) {
 	toUpload = make(map[string]struct{})
@@ -158,4 +167,103 @@ func DecryptLoginCredsData(encrData database.EncryptedData, key []byte) (databas
 		}
 	}
 	return logincred, nil
+}
+
+func SplitFurther(input []string) (output []string) {
+
+	if len(input) != 2 {
+		return input
+	}
+
+	splitted := strings.Split(input[1], " ")
+	output = input[:1]
+
+	output = append(output, splitted...)
+
+	return output
+}
+
+func EncryptNoteData(note database.Note, key []byte) (string, error) {
+	// concatenating data to string
+	noteStr := note.Name + "," + note.Text
+
+	// encrypting the data
+	encrypted, err := encrypt.EncryptData([]byte(noteStr), key)
+	if err != nil {
+		return "", err
+	}
+	// Encode the encrypted password in base64 for storage
+	encodedData := base64.StdEncoding.EncodeToString(encrypted)
+
+	return encodedData, nil
+}
+
+func DecryptNoteData(encrData database.EncryptedData, key []byte) (note database.Note, err error) {
+
+	decodedData, err := base64.StdEncoding.DecodeString(encrData.Data)
+	if err != nil {
+		return database.Note{}, err
+	}
+
+	decryptedData, err := encrypt.DecryptData(decodedData, key)
+	if err != nil {
+		return database.Note{}, err
+	}
+
+	dst := string(decryptedData)
+
+	noteArr := strings.Split(dst, ",")
+
+	for i, data := range noteArr {
+		switch i {
+		case 0:
+			note.Name = encrData.Name
+		case 1:
+			note.Text = data
+		}
+	}
+	return note, nil
+}
+
+func ReadBinaryFile(filename string) ([]byte, error) {
+
+	file, err := os.Open(filename)
+	if err != nil {
+		return nil, ErrWrongFile
+	}
+	defer file.Close()
+
+	reader := bufio.NewReader(file)
+
+	data, err := io.ReadAll(reader)
+	if err != nil {
+		return nil, fmt.Errorf("error when reading file:%w", err)
+	}
+
+	return data, nil
+}
+
+func PrepareBinary(binaryname, sendfolder string) (newbinary database.Binary, err error) {
+	if strings.HasPrefix(sendfolder, "/") {
+		sendfolder = strings.TrimLeft(sendfolder, "/")
+		sendfolder = "./" + sendfolder
+	} else if strings.HasPrefix(sendfolder, "./") {
+		// do nothing
+	} else {
+		sendfolder = "./" + sendfolder
+	}
+
+	if len(binaryname) == 0 {
+		return database.Binary{}, ErrEmptyName
+	}
+
+	data, err := ReadBinaryFile(sendfolder + "/" + binaryname)
+	if err != nil {
+		return database.Binary{}, nil
+	}
+
+	newbinary.Name = binaryname
+	newbinary.Data = data
+
+	return newbinary, nil
 }

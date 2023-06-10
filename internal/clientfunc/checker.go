@@ -2,6 +2,7 @@ package clientfunc
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"sync"
 	"time"
@@ -19,9 +20,9 @@ func (c *Client) DataChecker(context context.Context, ticker *time.Ticker, wgShu
 		case <-context.Done():
 			return
 		case <-ticker.C:
-			err := c.checkCards()
+			err := c.CheckAll()
 			if err != nil {
-				log.Println("error in DataChecker function returned from CheckCards:", err)
+				log.Println("error in DataChecker function returned from CheckAll:", err)
 			}
 		}
 	}
@@ -29,14 +30,37 @@ func (c *Client) DataChecker(context context.Context, ticker *time.Ticker, wgShu
 
 func (c *Client) CheckAll() error {
 
-	err := c.checkCards()
-	if err != nil {
-		return err
+	if err := c.checkCards(); err != nil {
+		if err == ErrDataNotFound {
+			//do nothing
+		} else {
+			return fmt.Errorf("error in checkCards:%w", err)
+		}
 	}
 
-	err = c.checkLoginCreds()
-	if err != nil {
-		return err
+	if err := c.checkLoginCreds(); err != nil {
+		if err == ErrDataNotFound {
+			//do nothing
+		} else {
+			return fmt.Errorf("error in checkLoginCreds:%w", err)
+		}
+	}
+
+	if err := c.checkNotes(); err != nil {
+		if err == ErrDataNotFound {
+			//do nothing
+		} else {
+			return fmt.Errorf("error in checkNotes:%w", err)
+		}
+	}
+
+	if err := c.checkBinaries(); err != nil {
+		if err == ErrDataNotFound {
+			//do nothing
+		} else {
+			return fmt.Errorf("error in checkBinaries:%w", err)
+		}
+
 	}
 
 	return nil
@@ -149,6 +173,111 @@ func (c *Client) checkLoginCreds() error {
 		}
 
 		err = c.saveLoginCredsInStorage(logincred)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (c *Client) checkNotes() error {
+	if c.AuthCookie == nil {
+		return nil
+	}
+
+	listDB, err := c.listNotesFromDB()
+	if err != nil {
+		return err
+	}
+
+	listLocal, err := c.listNotesFromStorage()
+	if err != nil {
+		return err
+	}
+
+	mapLocal := helpers.CreateMapFromList(listLocal)
+	mapServer := helpers.CreateMapFromList(listDB)
+
+	toUpload, toDownload := helpers.CompareTwoMaps(mapServer, mapLocal)
+
+	for notename := range toUpload {
+		var eData database.EncryptedData
+		note, err := c.getNoteFromStorage(notename)
+		if err != nil {
+			return err
+		}
+		eData.Data, err = helpers.EncryptNoteData(note, c.Key)
+		if err != nil {
+			return err
+		}
+		eData.Name = note.Name
+		err = c.sendNoteToDB(eData)
+		if err != nil {
+			return err
+		}
+	}
+
+	for notename := range toDownload {
+		eData, err := c.getNoteFromDB(notename)
+
+		if err != nil {
+			return err
+		}
+
+		note, err := helpers.DecryptNoteData(eData, c.Key)
+		if err != nil {
+			return err
+		}
+
+		err = c.saveNoteInStorage(note)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (c *Client) checkBinaries() error {
+	if c.AuthCookie == nil {
+		return nil
+	}
+
+	listDB, err := c.listBinariesFromDB()
+	if err != nil {
+		return err
+	}
+
+	listLocal, err := c.listBinariesFromStorage()
+	if err != nil {
+		return err
+	}
+
+	mapLocal := helpers.CreateMapFromList(listLocal)
+	mapServer := helpers.CreateMapFromList(listDB)
+
+	toUpload, toDownload := helpers.CompareTwoMaps(mapServer, mapLocal)
+
+	for binaryname := range toUpload {
+		binary, err := c.getBinaryFromStorage(binaryname)
+		if err != nil {
+			return err
+		}
+
+		err = c.sendBinaryToDB(binary)
+		if err != nil {
+			return err
+		}
+	}
+
+	for binaryname := range toDownload {
+		binary, err := c.getBinaryFromDB(binaryname)
+		if err != nil {
+			return err
+		}
+
+		err = c.saveBinaryInStorage(binary)
 		if err != nil {
 			return err
 		}

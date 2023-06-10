@@ -5,7 +5,9 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 
@@ -25,8 +27,8 @@ type LocalStorage struct {
 const (
 	cardsFile      = "/cards"
 	notesFile      = "/notes"
-	binariesFile   = "/binaries"
 	loginCredsFile = "/logincred"
+	binariesFolder = "/binaries"
 )
 
 var (
@@ -65,6 +67,22 @@ func (s *LocalStorage) InitStorage(key []byte) error {
 		s.Logincreds = list
 	}
 
+	list, err = s.ListNotesFromFile(key)
+	if err != nil {
+		s.deleteNotesFile()
+		s.Notes = []string{}
+		return nil
+	} else {
+		s.Notes = list
+	}
+	list, err = s.ListBinariesFromFolder()
+	if err != nil {
+		s.Binaries = []string{}
+		return nil
+	} else {
+		s.Binaries = list
+	}
+
 	return nil
 }
 
@@ -75,6 +93,14 @@ func (s *LocalStorage) DeleteLocalStorage() error {
 	}
 
 	if err := s.deleteLoginCredsFile(); err != nil {
+		return err
+	}
+
+	if err := s.deleteNotesFile(); err != nil {
+		return err
+	}
+
+	if err := s.deleteBinaryFiles(); err != nil {
 		return err
 	}
 
@@ -91,6 +117,22 @@ func (s *LocalStorage) deleteCardsFile() error {
 
 func (s *LocalStorage) deleteLoginCredsFile() error {
 	err := os.Remove(config.ClientCfg.LocalStorage + loginCredsFile)
+	if err != nil {
+		return fmt.Errorf("can't delete local cache:%w", err)
+	}
+	return nil
+}
+
+func (s *LocalStorage) deleteNotesFile() error {
+	err := os.Remove(config.ClientCfg.LocalStorage + notesFile)
+	if err != nil {
+		return fmt.Errorf("can't delete local cache:%w", err)
+	}
+	return nil
+}
+
+func (s *LocalStorage) deleteBinaryFiles() error {
+	err := os.Remove(config.ClientCfg.LocalStorage + binariesFolder)
 	if err != nil {
 		return fmt.Errorf("can't delete local cache:%w", err)
 	}
@@ -184,6 +226,12 @@ func (s *LocalStorage) GetCard(cardname string, key []byte) (card database.Card,
 }
 
 func (s *LocalStorage) ListCards() (cards []string, err error) {
+	s.Mu.Lock()
+	defer s.Mu.Unlock()
+
+	if len(s.Cards) == 0 {
+		return nil, ErrNoData
+	}
 	return s.Cards, nil
 }
 
@@ -249,7 +297,7 @@ func (s *LocalStorage) SaveLoginCreds(logincreds database.LoginCreds, key []byte
 
 	file, err := os.OpenFile(config.ClientCfg.LocalStorage+loginCredsFile, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0600)
 	if err != nil {
-		return fmt.Errorf("error in SaveCard when opening file:%w", err)
+		return fmt.Errorf("error in SaveLoginCreds when opening file:%w", err)
 	}
 	defer file.Close()
 
@@ -330,6 +378,11 @@ func (s *LocalStorage) GetLoginCreds(logincredsname string, key []byte) (logincr
 }
 
 func (s *LocalStorage) ListLoginCreds() (logincreds []string, err error) {
+	s.Mu.Lock()
+	defer s.Mu.Unlock()
+	if len(s.Logincreds) == 0 {
+		return nil, ErrNoData
+	}
 	return s.Logincreds, nil
 }
 
@@ -372,31 +425,301 @@ func (s *LocalStorage) ListLoginCredsFromFile(key []byte) (logincreds []string, 
 	return logincreds, nil
 }
 
+func (s *LocalStorage) lookupNote(note string) bool {
+
+	for _, l := range s.Notes {
+		if l == note {
+			return true
+		}
+	}
+	return false
+}
+
 // Notes processing methods
 func (s *LocalStorage) SaveNote(note database.Note, key []byte) error {
+	s.Mu.Lock()
+	defer s.Mu.Unlock()
+	// check if the card with this name is in storage. Return error if yes
+	if check := s.lookupNote(note.Name); check {
+		return ErrMetanameIsTaken
+	}
+
+	// add name to check array
+	s.Notes = append(s.Notes, note.Name)
+
+	file, err := os.OpenFile(config.ClientCfg.LocalStorage+notesFile, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0600)
+	if err != nil {
+		return fmt.Errorf("error in SaveNote when opening file:%w", err)
+	}
+	defer file.Close()
+
+	// concatenating string
+	noteStr := note.Name + "," + note.Text
+
+	// encrypting the data
+	encrypted, err := encrypt.EncryptData([]byte(noteStr), key)
+	if err != nil {
+		return err
+	}
+	// encoding the encrypted data in base64 for storage
+	encodedData := base64.StdEncoding.EncodeToString(encrypted)
+
+	// saving data to the filestorage
+	_, err = fmt.Fprintf(file, "%s\n", encodedData)
+	if err != nil {
+		fmt.Println("Error writing to file:", err)
+		return fmt.Errorf("error in SaveNote when writing in file:%w", err)
+	}
 
 	return nil
 }
 
 func (s *LocalStorage) GetNote(notename string, key []byte) (note database.Note, err error) {
+	s.Mu.Lock()
+	defer s.Mu.Unlock()
+	// check if the card with this name is in storage. Return error if yes
+	if check := s.lookupNote(notename); !check {
+		return database.Note{}, ErrNoData
+	}
 
-	return database.Note{}, nil
+	// opening the localstorage file
+	file, err := os.OpenFile(config.ClientCfg.LocalStorage+notesFile, os.O_RDONLY|os.O_CREATE, 0600)
+	if err != nil {
+		return database.Note{}, fmt.Errorf("error in GetNote when opening file:%w", err)
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	// reading with Scanner each line, until encounter needed one
+	for scanner.Scan() {
+		line := scanner.Text()
+		dst, err := base64.StdEncoding.DecodeString(line)
+		if err != nil {
+			return database.Note{}, err
+		}
+
+		decryptedData, err := encrypt.DecryptData(dst, key)
+		if err != nil {
+			return database.Note{}, err
+		}
+
+		//Getting the string, splitting it by comma to get values
+		noteStr := string(decryptedData)
+		noteArr := strings.Split(noteStr, ",")
+
+		if noteArr[0] == notename {
+			note.Name = noteArr[0]
+			note.Text = noteArr[1]
+			return note, nil
+		}
+	}
+	return database.Note{}, database.ErrDataNotFound
 }
 
 func (s *LocalStorage) ListNotes() (notes []string, err error) {
+	s.Mu.Lock()
+	defer s.Mu.Unlock()
+	if len(s.Notes) == 0 {
+		return nil, ErrNoData
+	}
 	return s.Notes, nil
 }
 
+func (s *LocalStorage) ListNotesFromFile(key []byte) (notes []string, err error) {
+	s.Mu.Lock()
+	defer s.Mu.Unlock()
+	// opening the localstorage file
+	file, err := os.OpenFile(config.ClientCfg.LocalStorage+notesFile, os.O_RDONLY|os.O_CREATE, 0600)
+	if err != nil {
+		return nil, fmt.Errorf("error in ListNotesFromFile when opening file:%w", err)
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+
+	for scanner.Scan() {
+		line := scanner.Text()
+
+		dst, err := base64.StdEncoding.DecodeString(line)
+		if err != nil {
+			return nil, err
+		}
+		decryptedData, err := encrypt.DecryptData(dst, key)
+		if err != nil {
+			return nil, err
+		}
+
+		//Getting the card string, splitting it by comma to get values
+		noteStr := string(decryptedData)
+		noteArr := strings.Split(noteStr, ",")
+
+		// cardArr[0] is the cardname
+		notes = append(notes, noteArr[0])
+	}
+
+	if len(notes) == 0 {
+		return nil, ErrNoData
+	}
+
+	return notes, nil
+}
+
 // Binaries processing methods
+func (s *LocalStorage) lookupBinary(binaryname string) bool {
+	for _, b := range s.Binaries {
+		if b == binaryname {
+			return true
+		}
+	}
+	return false
+}
 
 func (s *LocalStorage) SaveBinary(binary database.Binary, key []byte) error {
+	s.Mu.Lock()
+	defer s.Mu.Unlock()
+	// check if the card with this name is in storage. Return error if yes
+	if check := s.lookupBinary(binary.Name); check {
+		return ErrMetanameIsTaken
+	}
+
+	// add name to check array
+	s.Binaries = append(s.Binaries, binary.Name)
+
+	// just in case create binaries folder
+	os.Mkdir(config.ClientCfg.LocalStorage+binariesFolder, 0600)
+
+	file, err := os.OpenFile(config.ClientCfg.LocalStorage+binariesFolder+"/"+binary.Name, os.O_RDWR|os.O_CREATE, 0600)
+	if err != nil {
+		return fmt.Errorf("error in SaveBinary when opening file:%w", err)
+	}
+	defer file.Close()
+
+	// encrypting the data
+	encrypted, err := encrypt.EncryptData(binary.Data, key)
+	if err != nil {
+		return err
+	}
+
+	encodedData := base64.StdEncoding.EncodeToString(encrypted)
+
+	// saving data to the filestorage
+	_, err = fmt.Fprint(file, encodedData)
+	if err != nil {
+		fmt.Println("Error writing to file:", err)
+		return fmt.Errorf("error in SaveBinary when writing in file:%w", err)
+	}
+
 	return nil
 }
 
 func (s *LocalStorage) GetBinary(binaryname string, key []byte) (binary database.Binary, err error) {
-	return database.Binary{}, nil
+	s.Mu.Lock()
+	defer s.Mu.Unlock()
+	// check if the card with this name is in storage. Return error if yes
+	if check := s.lookupBinary(binaryname); !check {
+		return database.Binary{}, ErrNoData
+	}
+
+	file, err := os.OpenFile(config.ClientCfg.LocalStorage+binariesFolder+"/"+binaryname, os.O_RDONLY, 0600)
+	if err != nil {
+		return database.Binary{}, fmt.Errorf("error in GetBinary when opening file:%w", err)
+	}
+	defer file.Close()
+
+	reader := bufio.NewReader(file)
+
+	data, err := io.ReadAll(reader)
+
+	if err != nil {
+		return database.Binary{}, err
+	}
+
+	dst, err := base64.StdEncoding.DecodeString(string(data))
+	if err != nil {
+		return database.Binary{}, err
+	}
+	decryptedData, err := encrypt.DecryptData(dst, key)
+	if err != nil {
+		return database.Binary{}, err
+	}
+
+	binary.Name = binaryname
+	binary.Data = decryptedData
+
+	newfile, err := os.OpenFile(config.ClientCfg.BinOutputFolder+"/"+binary.Name, os.O_RDWR|os.O_CREATE, 0600)
+	if err != nil {
+		return database.Binary{}, fmt.Errorf("error in GetBinary when opening file:%w", err)
+	}
+	defer newfile.Close()
+
+	// saving data to the filestorage
+	_, err = fmt.Fprint(newfile, binary.Data)
+	if err != nil {
+		fmt.Println("Error writing to file:", err)
+		return database.Binary{}, fmt.Errorf("error in SaveBinary when writing in file:%w", err)
+	}
+
+	return binary, nil
+}
+
+func (s *LocalStorage) GetEncryptedBinary(binaryname string) (binary database.Binary, err error) {
+	s.Mu.Lock()
+	defer s.Mu.Unlock()
+	// check if the card with this name is in storage. Return error if yes
+	if check := s.lookupBinary(binaryname); !check {
+		return database.Binary{}, ErrNoData
+	}
+
+	file, err := os.OpenFile(config.ClientCfg.LocalStorage+binariesFolder+"/"+binaryname, os.O_RDONLY, 0600)
+	if err != nil {
+		return database.Binary{}, fmt.Errorf("error in GetEncryptedBinary when opening file:%w", err)
+	}
+	defer file.Close()
+
+	reader := bufio.NewReader(file)
+
+	data, err := io.ReadAll(reader)
+	if err != nil {
+		return database.Binary{}, err
+	}
+
+	binary.Name = binaryname
+	binary.Data = data
+
+	return binary, nil
 }
 
 func (s *LocalStorage) ListBinaries() (binaries []string, err error) {
+	s.Mu.Lock()
+	defer s.Mu.Unlock()
+	if len(s.Binaries) == 0 {
+		return nil, nil
+	}
 	return s.Binaries, nil
+}
+
+func (s *LocalStorage) ListBinariesFromFolder() (binaries []string, err error) {
+	s.Mu.Lock()
+	defer s.Mu.Unlock()
+
+	// Open the folder
+	err = filepath.Walk(config.ClientCfg.LocalStorage+binariesFolder, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			fmt.Println("Error accessing path:", err)
+			return nil
+		}
+
+		if !info.IsDir() {
+			binaries = append(binaries, info.Name())
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		fmt.Println("Error walking folder:", err)
+		return nil, err
+	}
+
+	return binaries, nil
 }
