@@ -52,7 +52,6 @@ func NewStorage() *LocalStorage {
 func (s *LocalStorage) InitStorage(key []byte) error {
 	list, err := s.ListCardsFromFile(key)
 	if err != nil {
-		s.deleteCardsFile()
 		s.Cards = []string{}
 	} else {
 		s.Cards = list
@@ -60,25 +59,20 @@ func (s *LocalStorage) InitStorage(key []byte) error {
 
 	list, err = s.ListLoginCredsFromFile(key)
 	if err != nil {
-		s.deleteLoginCredsFile()
 		s.Logincreds = []string{}
-		return nil
 	} else {
 		s.Logincreds = list
 	}
 
 	list, err = s.ListNotesFromFile(key)
 	if err != nil {
-		s.deleteNotesFile()
 		s.Notes = []string{}
-		return nil
 	} else {
 		s.Notes = list
 	}
 	list, err = s.ListBinariesFromFolder()
 	if err != nil {
 		s.Binaries = []string{}
-		return nil
 	} else {
 		s.Binaries = list
 	}
@@ -230,7 +224,7 @@ func (s *LocalStorage) ListCards() (cards []string, err error) {
 	defer s.Mu.Unlock()
 
 	if len(s.Cards) == 0 {
-		return nil, ErrNoData
+		return nil, nil
 	}
 	return s.Cards, nil
 }
@@ -381,7 +375,7 @@ func (s *LocalStorage) ListLoginCreds() (logincreds []string, err error) {
 	s.Mu.Lock()
 	defer s.Mu.Unlock()
 	if len(s.Logincreds) == 0 {
-		return nil, ErrNoData
+		return nil, nil
 	}
 	return s.Logincreds, nil
 }
@@ -520,7 +514,7 @@ func (s *LocalStorage) ListNotes() (notes []string, err error) {
 	s.Mu.Lock()
 	defer s.Mu.Unlock()
 	if len(s.Notes) == 0 {
-		return nil, ErrNoData
+		return nil, nil
 	}
 	return s.Notes, nil
 }
@@ -701,6 +695,9 @@ func (s *LocalStorage) ListBinaries() (binaries []string, err error) {
 func (s *LocalStorage) ListBinariesFromFolder() (binaries []string, err error) {
 	s.Mu.Lock()
 	defer s.Mu.Unlock()
+
+	// Make a folder if its a first time
+	os.Mkdir(config.ClientCfg.LocalStorage+binariesFolder, 0600)
 
 	// Open the folder
 	err = filepath.Walk(config.ClientCfg.LocalStorage+binariesFolder, func(path string, info os.FileInfo, err error) error {

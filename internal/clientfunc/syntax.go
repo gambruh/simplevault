@@ -44,7 +44,7 @@ func printListLoginCredsSyntax() {
 
 func printSetNoteSyntax() {
 	fmt.Println("Wrong input!")
-	fmt.Println("Right syntax:setnote <name of the note> <text of the note>")
+	fmt.Println(`Right syntax:setnote <name of the note> <"text of the note">`)
 }
 
 func printGetNoteSyntax() {
