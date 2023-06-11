@@ -49,11 +49,3 @@ const createPasswordsTableQuery = `
 				ON DELETE CASCADE
 	);
 `
-
-//const dropPasswordsTableQuery = `
-//	DROP TABLE gk_passwords CASCADE;
-//`
-
-//const dropUsersTableQuery = `
-//	DROP TABLE gk_users CASCADE;
-//`

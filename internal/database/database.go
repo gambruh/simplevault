@@ -1,3 +1,4 @@
+// package database is responsible for interaction with postgres DB
 package database
 
 import (

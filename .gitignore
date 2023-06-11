@@ -1,0 +1,4 @@
+/internal/storage/
+/cmd/client/localstorage/
+/cmd/client/userdata/
+.exe

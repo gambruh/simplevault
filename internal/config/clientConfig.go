@@ -13,7 +13,8 @@ type ClientConfig struct {
 	PublicKey       string        `env:"GK_PUBLICKEY" envDefault:"publickey.pem"`
 	LocalStorage    string        `env:"GK_LOCALSTORAGE" envDefault:"./localstorage"`
 	BinInputFolder  string        `env:"GK_BINARIES_INPUT" envDefault:"./filetosend"`
-	UserData        string        `env:"GK_USERDATA" envDefault:"./userdata/user.json"`
+	UserDataFolder  string        `env:"GK_USERDATA_FOLDER" envDefault:"./userdata"`
+	UserDataFile    string        `env:"GK_USERDATA_FILE" envDefault:"./userdata/user.json"`
 	BinOutputFolder string        `env:"GK_BINARIES_OUTPUT" envDefault:"./filesrcv"`
 	CheckTime       time.Duration `env:"GK_CHECKINTERVAL" envDefault:"60s"`
 }
@@ -22,7 +23,8 @@ type ClientFlagConfig struct {
 	Address         *string
 	PublicKey       *string
 	LocalStorage    *string
-	UserData        *string
+	UserDataFolder  *string
+	UserDataFile    *string
 	BinInputFolder  *string
 	BinOutputFolder *string
 	CheckTime       *time.Duration

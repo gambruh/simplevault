@@ -1,6 +1,7 @@
 package clientfunc
 
 import (
+	"bufio"
 	"bytes"
 	"crypto/sha256"
 	"encoding/json"
@@ -17,12 +18,10 @@ import (
 	"github.com/gambruh/gophkeeper/internal/helpers"
 )
 
-const userdata = "./userdata/user.json"
-
 func getUserDataFromFile() (auth.LoginData, error) {
 
 	var logindata auth.LoginData
-	ufile, err := os.Open(userdata)
+	ufile, err := os.Open(config.ClientCfg.UserDataFile)
 	if err != nil {
 		fmt.Println("please login, using login command")
 		return auth.LoginData{}, err
@@ -64,7 +63,7 @@ func (c *Client) Register(input []string) {
 		c.Key = key[:]
 		fmt.Println("registered successfully")
 		c.createUserLoginFile(loginData.Login, loginData.Password)
-		c.DeleteLocalStorage()
+		c.Storage.InitStorage(c.Key)
 	case ErrUsernameIsTaken:
 		fmt.Println("Username is taken, please provide another")
 	default:
@@ -89,6 +88,7 @@ func (c *Client) Login(input []string) {
 		}
 	}
 
+	c.checkLoginFile(loginData)
 	// login online
 	err := c.loginOnline(loginData)
 	if err != nil {
@@ -111,11 +111,12 @@ func (c *Client) loginOnline(loginData auth.LoginData) error {
 	switch err {
 	case nil:
 		c.AuthCookie = authcookie
-		key := sha256.Sum256([]byte(loginData.Password))
+		key := sha256.Sum256([]byte(loginData.Login + loginData.Password))
 		c.Key = key[:]
 		c.createUserLoginFile(loginData.Login, loginData.Password)
 		return nil
 	case ErrWrongLoginData:
+
 		fmt.Println("wrong login credentials, try again")
 		return ErrWrongLoginData
 	case ErrServerIsDown:
@@ -149,7 +150,7 @@ func (c *Client) loginOffline(logincreds auth.LoginData) error {
 
 	//sucessfuly logged in
 	c.LoggedOffline = true
-	key := sha256.Sum256([]byte(logincreds.Password))
+	key := sha256.Sum256([]byte(logincreds.Login + logincreds.Password))
 	c.Key = key[:]
 	return nil
 }
@@ -248,7 +249,8 @@ func (c *Client) sendLoginRequest(login auth.LoginData) (*http.Cookie, error) {
 
 func (c *Client) createUserLoginFile(username, password string) error {
 
-	file, err := os.OpenFile(config.ClientCfg.UserData, os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0600)
+	os.Mkdir(config.ClientCfg.UserDataFolder, 0600)
+	file, err := os.OpenFile(config.ClientCfg.UserDataFile, os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0600)
 	if err != nil {
 		return fmt.Errorf("error when trying to create/open userdata file:%w", err)
 	}
@@ -266,4 +268,24 @@ func (c *Client) createUserLoginFile(username, password string) error {
 	}
 
 	return nil
+}
+
+func (c *Client) checkLoginFile(logindata auth.LoginData) {
+
+	var tempLoginData auth.LoginData
+
+	file, err := os.OpenFile(config.ClientCfg.UserDataFile, os.O_RDWR|os.O_CREATE, 0600)
+	if err != nil {
+		return
+	}
+	defer file.Close()
+
+	reader := bufio.NewReader(file)
+
+	json.NewDecoder(reader).Decode(&tempLoginData)
+
+	if tempLoginData.Login != logindata.Login {
+		os.Remove(config.ClientCfg.UserDataFile)
+		c.DeleteLocalStorage()
+	}
 }

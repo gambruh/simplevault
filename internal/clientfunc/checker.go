@@ -1,33 +1,13 @@
 package clientfunc
 
 import (
-	"context"
 	"fmt"
-	"log"
-	"sync"
-	"time"
 
 	"github.com/gambruh/gophkeeper/internal/database"
 	"github.com/gambruh/gophkeeper/internal/helpers"
 )
 
-// DataChecker synchronizes data between local storage and DB
-func (c *Client) DataChecker(context context.Context, ticker *time.Ticker, wgShutdown *sync.WaitGroup) {
-	defer wgShutdown.Done()
-
-	for {
-		select {
-		case <-context.Done():
-			return
-		case <-ticker.C:
-			err := c.CheckAll()
-			if err != nil {
-				log.Println("error in DataChecker function returned from CheckAll:", err)
-			}
-		}
-	}
-}
-
+// CheckAll function checks for desynchronized data between client and server
 func (c *Client) CheckAll() error {
 
 	if err := c.checkCards(); err != nil {
