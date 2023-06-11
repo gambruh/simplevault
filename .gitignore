@@ -1,4 +1,6 @@
 /internal/storage/
 /cmd/client/localstorage/
 /cmd/client/userdata/
+/cmd/client/filesrcv/
+/cmd/client/filetosend/
 .exe

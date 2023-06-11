@@ -52,8 +52,8 @@ func NewStorage() *LocalStorage {
 func (s *LocalStorage) InitStorage(key []byte) error {
 	//create local folders if needed
 	os.Mkdir(config.ClientCfg.LocalStorage, 0600)
-	os.Mkdir(config.ClientCfg.LocalStorage+"/"+config.ClientCfg.BinInputFolder, 0600)
-	os.Mkdir(config.ClientCfg.LocalStorage+"/"+config.ClientCfg.BinOutputFolder, 0600)
+	os.Mkdir(config.ClientCfg.BinInputFolder, 0600)
+	os.Mkdir(config.ClientCfg.BinOutputFolder, 0600)
 
 	list, err := s.ListCardsFromFile(key)
 	if err != nil {
