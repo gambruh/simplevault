@@ -12,8 +12,8 @@ import (
 	"sync"
 
 	"github.com/gambruh/gophkeeper/internal/config"
-	"github.com/gambruh/gophkeeper/internal/database"
 	"github.com/gambruh/gophkeeper/internal/encrypt"
+	"github.com/gambruh/gophkeeper/internal/storage"
 )
 
 type LocalStorage struct {
@@ -140,7 +140,7 @@ func (s *LocalStorage) deleteBinaryFiles() error {
 }
 
 // SaveCard method encrypts and saves card data to the storage
-func (s *LocalStorage) SaveCard(card database.Card, key []byte) error {
+func (s *LocalStorage) SaveCard(card storage.Card, key []byte) error {
 	s.Mu.Lock()
 	defer s.Mu.Unlock()
 	// check if the card with this name is in storage. Return error if yes
@@ -177,18 +177,18 @@ func (s *LocalStorage) SaveCard(card database.Card, key []byte) error {
 	return nil
 }
 
-func (s *LocalStorage) GetCard(cardname string, key []byte) (card database.Card, err error) {
+func (s *LocalStorage) GetCard(cardname string, key []byte) (card storage.Card, err error) {
 	s.Mu.Lock()
 	defer s.Mu.Unlock()
 	// check if the card with this name is in storage. Return error if yes
 	if check := s.lookupCard(cardname); !check {
-		return database.Card{}, ErrNoData
+		return storage.Card{}, ErrNoData
 	}
 
 	// opening the localstorage file
 	file, err := os.OpenFile(config.ClientCfg.LocalStorage+cardsFile, os.O_RDONLY|os.O_CREATE, 0600)
 	if err != nil {
-		return database.Card{}, fmt.Errorf("error in GetCard when opening file:%w", err)
+		return storage.Card{}, fmt.Errorf("error in GetCard when opening file:%w", err)
 	}
 	defer file.Close()
 
@@ -198,12 +198,12 @@ func (s *LocalStorage) GetCard(cardname string, key []byte) (card database.Card,
 		line := scanner.Text()
 		dst, err := base64.StdEncoding.DecodeString(line)
 		if err != nil {
-			return database.Card{}, err
+			return storage.Card{}, err
 		}
 
 		decryptedData, err := encrypt.DecryptData(dst, key)
 		if err != nil {
-			return database.Card{}, err
+			return storage.Card{}, err
 		}
 
 		//Getting the card string, splitting it by comma to get values
@@ -211,7 +211,7 @@ func (s *LocalStorage) GetCard(cardname string, key []byte) (card database.Card,
 		cardArr := strings.Split(cardStr, ",")
 
 		// cardArr[0] is the cardname. If it is the one we are looking for,
-		// we fill in fields of database.Card struct and return it
+		// we fill in fields of storage.Card struct and return it
 		if cardArr[0] == cardname {
 			card.Cardname = cardArr[0]
 			card.Number = cardArr[1]
@@ -222,7 +222,7 @@ func (s *LocalStorage) GetCard(cardname string, key []byte) (card database.Card,
 			return card, nil
 		}
 	}
-	return database.Card{}, database.ErrDataNotFound
+	return storage.Card{}, storage.ErrDataNotFound
 }
 
 func (s *LocalStorage) ListCards() (cards []string, err error) {
@@ -284,7 +284,7 @@ func (s *LocalStorage) lookupCard(cardname string) bool {
 	return false
 }
 
-func (s *LocalStorage) SaveLoginCreds(logincreds database.LoginCreds, key []byte) error {
+func (s *LocalStorage) SaveLoginCreds(logincreds storage.LoginCreds, key []byte) error {
 	s.Mu.Lock()
 	defer s.Mu.Unlock()
 	// check if the card with this name is in storage. Return error if yes
@@ -332,18 +332,18 @@ func (s *LocalStorage) lookupLoginCreds(logincreds string) bool {
 	return false
 }
 
-func (s *LocalStorage) GetLoginCreds(logincredsname string, key []byte) (logincreds database.LoginCreds, err error) {
+func (s *LocalStorage) GetLoginCreds(logincredsname string, key []byte) (logincreds storage.LoginCreds, err error) {
 	s.Mu.Lock()
 	defer s.Mu.Unlock()
 	// check if the card with this name is in storage. Return error if yes
 	if check := s.lookupLoginCreds(logincredsname); !check {
-		return database.LoginCreds{}, ErrNoData
+		return storage.LoginCreds{}, ErrNoData
 	}
 
 	// opening the localstorage file
 	file, err := os.OpenFile(config.ClientCfg.LocalStorage+loginCredsFile, os.O_RDONLY|os.O_CREATE, 0600)
 	if err != nil {
-		return database.LoginCreds{}, fmt.Errorf("error in GetLoginCreds when opening file:%w", err)
+		return storage.LoginCreds{}, fmt.Errorf("error in GetLoginCreds when opening file:%w", err)
 	}
 	defer file.Close()
 
@@ -353,12 +353,12 @@ func (s *LocalStorage) GetLoginCreds(logincredsname string, key []byte) (logincr
 		line := scanner.Text()
 		dst, err := base64.StdEncoding.DecodeString(line)
 		if err != nil {
-			return database.LoginCreds{}, err
+			return storage.LoginCreds{}, err
 		}
 
 		decryptedData, err := encrypt.DecryptData(dst, key)
 		if err != nil {
-			return database.LoginCreds{}, err
+			return storage.LoginCreds{}, err
 		}
 
 		//Getting the string, splitting it by comma to get values
@@ -374,7 +374,7 @@ func (s *LocalStorage) GetLoginCreds(logincredsname string, key []byte) (logincr
 			return logincreds, nil
 		}
 	}
-	return database.LoginCreds{}, database.ErrDataNotFound
+	return storage.LoginCreds{}, storage.ErrDataNotFound
 }
 
 func (s *LocalStorage) ListLoginCreds() (logincreds []string, err error) {
@@ -436,7 +436,7 @@ func (s *LocalStorage) lookupNote(note string) bool {
 }
 
 // Notes processing methods
-func (s *LocalStorage) SaveNote(note database.Note, key []byte) error {
+func (s *LocalStorage) SaveNote(note storage.Note, key []byte) error {
 	s.Mu.Lock()
 	defer s.Mu.Unlock()
 	// check if the card with this name is in storage. Return error if yes
@@ -474,18 +474,18 @@ func (s *LocalStorage) SaveNote(note database.Note, key []byte) error {
 	return nil
 }
 
-func (s *LocalStorage) GetNote(notename string, key []byte) (note database.Note, err error) {
+func (s *LocalStorage) GetNote(notename string, key []byte) (note storage.Note, err error) {
 	s.Mu.Lock()
 	defer s.Mu.Unlock()
 	// check if the card with this name is in storage. Return error if yes
 	if check := s.lookupNote(notename); !check {
-		return database.Note{}, ErrNoData
+		return storage.Note{}, ErrNoData
 	}
 
 	// opening the localstorage file
 	file, err := os.OpenFile(config.ClientCfg.LocalStorage+notesFile, os.O_RDONLY|os.O_CREATE, 0600)
 	if err != nil {
-		return database.Note{}, fmt.Errorf("error in GetNote when opening file:%w", err)
+		return storage.Note{}, fmt.Errorf("error in GetNote when opening file:%w", err)
 	}
 	defer file.Close()
 
@@ -495,12 +495,12 @@ func (s *LocalStorage) GetNote(notename string, key []byte) (note database.Note,
 		line := scanner.Text()
 		dst, err := base64.StdEncoding.DecodeString(line)
 		if err != nil {
-			return database.Note{}, err
+			return storage.Note{}, err
 		}
 
 		decryptedData, err := encrypt.DecryptData(dst, key)
 		if err != nil {
-			return database.Note{}, err
+			return storage.Note{}, err
 		}
 
 		//Getting the string, splitting it by comma to get values
@@ -513,7 +513,7 @@ func (s *LocalStorage) GetNote(notename string, key []byte) (note database.Note,
 			return note, nil
 		}
 	}
-	return database.Note{}, database.ErrDataNotFound
+	return storage.Note{}, storage.ErrDataNotFound
 }
 
 func (s *LocalStorage) ListNotes() (notes []string, err error) {
@@ -574,7 +574,7 @@ func (s *LocalStorage) lookupBinary(binaryname string) bool {
 	return false
 }
 
-func (s *LocalStorage) SaveBinary(binary database.Binary, key []byte) error {
+func (s *LocalStorage) SaveBinary(binary storage.Binary, key []byte) error {
 	s.Mu.Lock()
 	defer s.Mu.Unlock()
 	// check if the card with this name is in storage. Return error if yes
@@ -612,17 +612,17 @@ func (s *LocalStorage) SaveBinary(binary database.Binary, key []byte) error {
 	return nil
 }
 
-func (s *LocalStorage) GetBinary(binaryname string, key []byte) (binary database.Binary, err error) {
+func (s *LocalStorage) GetBinary(binaryname string, key []byte) (binary storage.Binary, err error) {
 	s.Mu.Lock()
 	defer s.Mu.Unlock()
 	// check if the card with this name is in storage. Return error if yes
 	if check := s.lookupBinary(binaryname); !check {
-		return database.Binary{}, ErrNoData
+		return storage.Binary{}, ErrNoData
 	}
 
 	file, err := os.OpenFile(config.ClientCfg.LocalStorage+binariesFolder+"/"+binaryname, os.O_RDONLY, 0600)
 	if err != nil {
-		return database.Binary{}, fmt.Errorf("error in GetBinary when opening file:%w", err)
+		return storage.Binary{}, fmt.Errorf("error in GetBinary when opening file:%w", err)
 	}
 	defer file.Close()
 
@@ -631,16 +631,16 @@ func (s *LocalStorage) GetBinary(binaryname string, key []byte) (binary database
 	data, err := io.ReadAll(reader)
 
 	if err != nil {
-		return database.Binary{}, err
+		return storage.Binary{}, err
 	}
 
 	dst, err := base64.StdEncoding.DecodeString(string(data))
 	if err != nil {
-		return database.Binary{}, err
+		return storage.Binary{}, err
 	}
 	decryptedData, err := encrypt.DecryptData(dst, key)
 	if err != nil {
-		return database.Binary{}, err
+		return storage.Binary{}, err
 	}
 
 	binary.Name = binaryname
@@ -651,7 +651,7 @@ func (s *LocalStorage) GetBinary(binaryname string, key []byte) (binary database
 
 	newfile, err := os.OpenFile(config.ClientCfg.BinOutputFolder+"/"+binary.Name, os.O_RDWR|os.O_CREATE, 0600)
 	if err != nil {
-		return database.Binary{}, fmt.Errorf("error in GetBinary when opening file:%w", err)
+		return storage.Binary{}, fmt.Errorf("error in GetBinary when opening file:%w", err)
 	}
 	defer newfile.Close()
 
@@ -659,23 +659,23 @@ func (s *LocalStorage) GetBinary(binaryname string, key []byte) (binary database
 	_, err = fmt.Fprint(newfile, binary.Data)
 	if err != nil {
 		fmt.Println("Error writing to file:", err)
-		return database.Binary{}, fmt.Errorf("error in SaveBinary when writing in file:%w", err)
+		return storage.Binary{}, fmt.Errorf("error in SaveBinary when writing in file:%w", err)
 	}
 
 	return binary, nil
 }
 
-func (s *LocalStorage) GetEncryptedBinary(binaryname string) (binary database.Binary, err error) {
+func (s *LocalStorage) GetEncryptedBinary(binaryname string) (binary storage.Binary, err error) {
 	s.Mu.Lock()
 	defer s.Mu.Unlock()
 	// check if the card with this name is in storage. Return error if yes
 	if check := s.lookupBinary(binaryname); !check {
-		return database.Binary{}, ErrNoData
+		return storage.Binary{}, ErrNoData
 	}
 
 	file, err := os.OpenFile(config.ClientCfg.LocalStorage+binariesFolder+"/"+binaryname, os.O_RDONLY, 0600)
 	if err != nil {
-		return database.Binary{}, fmt.Errorf("error in GetEncryptedBinary when opening file:%w", err)
+		return storage.Binary{}, fmt.Errorf("error in GetEncryptedBinary when opening file:%w", err)
 	}
 	defer file.Close()
 
@@ -683,7 +683,7 @@ func (s *LocalStorage) GetEncryptedBinary(binaryname string) (binary database.Bi
 
 	data, err := io.ReadAll(reader)
 	if err != nil {
-		return database.Binary{}, err
+		return storage.Binary{}, err
 	}
 
 	binary.Name = binaryname

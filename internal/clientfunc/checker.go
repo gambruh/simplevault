@@ -3,8 +3,8 @@ package clientfunc
 import (
 	"fmt"
 
-	"github.com/gambruh/gophkeeper/internal/database"
 	"github.com/gambruh/gophkeeper/internal/helpers"
+	"github.com/gambruh/gophkeeper/internal/storage"
 )
 
 // CheckAll function checks for desynchronized data between client and server
@@ -66,7 +66,7 @@ func (c *Client) checkCards() error {
 	toUpload, toDownload := helpers.CompareTwoMaps(mapServer, mapLocal)
 
 	for cardname := range toUpload {
-		var eCard database.EncryptedCard
+		var eCard storage.EncryptedData
 		card, err := c.getCardFromStorage(cardname)
 		if err != nil {
 			return err
@@ -75,7 +75,7 @@ func (c *Client) checkCards() error {
 		if err != nil {
 			return err
 		}
-		eCard.Cardname = card.Cardname
+		eCard.Name = card.Cardname
 		err = c.sendCardToDB(eCard)
 		if err != nil {
 			return err
@@ -124,7 +124,7 @@ func (c *Client) checkLoginCreds() error {
 	toUpload, toDownload := helpers.CompareTwoMaps(mapServer, mapLocal)
 
 	for logincredname := range toUpload {
-		var eLoginCred database.EncryptedData
+		var eLoginCred storage.EncryptedData
 		logincred, err := c.getLoginCredsFromStorage(logincredname)
 		if err != nil {
 			return err
@@ -182,7 +182,7 @@ func (c *Client) checkNotes() error {
 	toUpload, toDownload := helpers.CompareTwoMaps(mapServer, mapLocal)
 
 	for notename := range toUpload {
-		var eData database.EncryptedData
+		var eData storage.EncryptedData
 		note, err := c.getNoteFromStorage(notename)
 		if err != nil {
 			return err

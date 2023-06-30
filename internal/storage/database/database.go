@@ -4,7 +4,6 @@ package database
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"log"
 	"time"
@@ -12,17 +11,18 @@ import (
 	"github.com/lib/pq"
 
 	"github.com/gambruh/gophkeeper/internal/config"
+	"github.com/gambruh/gophkeeper/internal/storage"
 )
 
 type Storage interface {
-	SetLoginCred(username string, logincreds EncryptedData) error
-	SetNote(username string, note EncryptedData) error
-	SetBinary(username string, binary Binary) error
-	SetCard(username string, card EncryptedCard) error
-	GetLoginCred(username string, name string) (EncryptedData, error)
-	GetNote(username string, name string) (EncryptedData, error)
-	GetBinary(username string, name string) (Binary, error)
-	GetCard(username string, name string) (EncryptedCard, error)
+	SetLoginCred(username string, logincreds storage.EncryptedData) error
+	SetNote(username string, note storage.EncryptedData) error
+	SetBinary(username string, binary storage.Binary) error
+	SetCard(username string, card storage.EncryptedData) error
+	GetLoginCred(username string, name string) (storage.EncryptedData, error)
+	GetNote(username string, name string) (storage.EncryptedData, error)
+	GetBinary(username string, name string) (storage.Binary, error)
+	GetCard(username string, name string) (storage.EncryptedData, error)
 	ListLoginCreds(username string) ([]string, error)
 	ListNotes(username string) ([]string, error)
 	ListBinaries(username string) ([]string, error)
@@ -32,14 +32,6 @@ type Storage interface {
 type SQLdb struct {
 	DB *sql.DB
 }
-
-// типы ошибок
-var (
-	ErrTableDoesntExist = errors.New("table doesn't exist")
-	ErrWrongPassword    = errors.New("wrong password")
-	ErrDataNotFound     = errors.New("requested data not found in storage")
-	ErrMetanameIsTaken  = errors.New("metaname is already in use")
-)
 
 func NewSQLdb(postgresStr string) *SQLdb {
 	DB, _ := sql.Open("postgres", postgresStr)
@@ -108,14 +100,14 @@ func (s *SQLdb) checkTableExists(tablename string) error {
 		return err
 	}
 	if !check {
-		return ErrTableDoesntExist
+		return storage.ErrTableDoesntExist
 	}
 	return nil
 }
 
 func (s *SQLdb) createLoginCredsTable() error {
 	err := s.checkTableExists("gk_logincreds")
-	if err == ErrTableDoesntExist {
+	if err == storage.ErrTableDoesntExist {
 		if _, err := s.DB.Exec(createLoginCredsTableQuery); err != nil {
 			return err
 		}
@@ -135,7 +127,7 @@ func (s *SQLdb) createLoginCredsTable() error {
 
 func (s *SQLdb) createCardsTable() error {
 	err := s.checkTableExists("gk_cards")
-	if err == ErrTableDoesntExist {
+	if err == storage.ErrTableDoesntExist {
 		_, err := s.DB.Exec(createCardsTableQuery)
 		if err != nil {
 			return err
@@ -159,7 +151,7 @@ func (s *SQLdb) createCardsTable() error {
 
 func (s *SQLdb) createNotesTable() error {
 	err := s.checkTableExists("gk_notes")
-	if err == ErrTableDoesntExist {
+	if err == storage.ErrTableDoesntExist {
 		_, err := s.DB.Exec(createNotesTableQuery)
 		if err != nil {
 			return err
@@ -178,7 +170,7 @@ func (s *SQLdb) createNotesTable() error {
 
 func (s *SQLdb) createBinariesTable() error {
 	err := s.checkTableExists("gk_binaries")
-	if err == ErrTableDoesntExist {
+	if err == storage.ErrTableDoesntExist {
 		if _, err := s.DB.Exec(createBinariesTableQuery); err != nil {
 			return err
 		}
@@ -190,29 +182,29 @@ func (s *SQLdb) createBinariesTable() error {
 	return nil
 }
 
-func (s *SQLdb) SetCard(username string, cardData EncryptedCard) error {
+func (s *SQLdb) SetCard(username string, cardData storage.EncryptedData) error {
 
 	var cardname string
-	err := s.DB.QueryRow(checkCardNameQuery, cardData.Cardname, username).Scan(&cardname)
+	err := s.DB.QueryRow(checkCardNameQuery, cardData.Name, username).Scan(&cardname)
 	if err != sql.ErrNoRows {
-		return ErrMetanameIsTaken
+		return storage.ErrMetanameIsTaken
 	}
 
-	_, err = s.DB.Exec(setCardQuery, cardData.Cardname, cardData.Data, username)
+	_, err = s.DB.Exec(setCardQuery, cardData.Name, cardData.Data, username)
 	if err != nil {
 		return fmt.Errorf("error setting card data in SetCard:%w", err)
 	}
 	return nil
 }
 
-func (s *SQLdb) GetCard(username string, cardname string) (EncryptedCard, error) {
-	var cardData EncryptedCard
-	err := s.DB.QueryRow(getCardQuery, cardname, username).Scan(&cardData.Cardname, &cardData.Data)
+func (s *SQLdb) GetCard(username string, cardname string) (storage.EncryptedData, error) {
+	var cardData storage.EncryptedData
+	err := s.DB.QueryRow(getCardQuery, cardname, username).Scan(&cardData.Name, &cardData.Data)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return EncryptedCard{}, ErrDataNotFound
+			return storage.EncryptedData{}, storage.ErrDataNotFound
 		} else {
-			return EncryptedCard{}, fmt.Errorf("error in GetCard:%w", err)
+			return storage.EncryptedData{}, fmt.Errorf("error in GetCard:%w", err)
 		}
 	}
 	return cardData, nil
@@ -223,7 +215,7 @@ func (s *SQLdb) ListCards(username string) (cardnames []string, err error) {
 	rows, err := s.DB.Query(listCardsQuery, username)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, ErrDataNotFound
+			return nil, storage.ErrDataNotFound
 		}
 		return nil, fmt.Errorf("couldn't ask database in ListCards:%w", err)
 	}
@@ -248,7 +240,7 @@ func (s *SQLdb) ListCards(username string) (cardnames []string, err error) {
 	return cardnames, nil
 }
 
-func (s *SQLdb) SetLoginCred(username string, loginData EncryptedData) error {
+func (s *SQLdb) SetLoginCred(username string, loginData storage.EncryptedData) error {
 	_, err := s.DB.Exec(setLoginCredsQuery, loginData.Name, loginData.Data, username)
 	if err != nil {
 		return fmt.Errorf("error setting data in SetLoginCred:%w", err)
@@ -256,14 +248,14 @@ func (s *SQLdb) SetLoginCred(username string, loginData EncryptedData) error {
 	return nil
 }
 
-func (s *SQLdb) GetLoginCred(username string, loginname string) (logincred EncryptedData, err error) {
-	var encrData EncryptedData
+func (s *SQLdb) GetLoginCred(username string, loginname string) (logincred storage.EncryptedData, err error) {
+	var encrData storage.EncryptedData
 	err = s.DB.QueryRow(getLoginCredsQuery, loginname, username).Scan(&encrData.Name, &encrData.Data)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return EncryptedData{}, ErrDataNotFound
+			return storage.EncryptedData{}, storage.ErrDataNotFound
 		} else {
-			return EncryptedData{}, fmt.Errorf("error in GetLoginCred:%w", err)
+			return storage.EncryptedData{}, fmt.Errorf("error in GetLoginCred:%w", err)
 		}
 	}
 	return encrData, nil
@@ -274,7 +266,7 @@ func (s *SQLdb) ListLoginCreds(username string) (logincrednames []string, err er
 	rows, err := s.DB.Query(listLoginCredsQuery, username)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, ErrDataNotFound
+			return nil, storage.ErrDataNotFound
 		}
 		return nil, fmt.Errorf("couldn't ask database in ListLoginCreds:%w", err)
 	}
@@ -299,7 +291,7 @@ func (s *SQLdb) ListLoginCreds(username string) (logincrednames []string, err er
 	return logincrednames, nil
 }
 
-func (s *SQLdb) SetNote(username string, data EncryptedData) error {
+func (s *SQLdb) SetNote(username string, data storage.EncryptedData) error {
 	_, err := s.DB.Exec(setNoteQuery, data.Name, data.Data, username)
 	if err != nil {
 		return fmt.Errorf("error setting data in SetLoginCred:%w", err)
@@ -307,14 +299,14 @@ func (s *SQLdb) SetNote(username string, data EncryptedData) error {
 	return nil
 }
 
-func (s *SQLdb) GetNote(username string, notename string) (encrData EncryptedData, err error) {
+func (s *SQLdb) GetNote(username string, notename string) (encrData storage.EncryptedData, err error) {
 
 	err = s.DB.QueryRow(getNoteQuery, notename, username).Scan(&encrData.Name, &encrData.Data)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return EncryptedData{}, ErrDataNotFound
+			return storage.EncryptedData{}, storage.ErrDataNotFound
 		} else {
-			return EncryptedData{}, fmt.Errorf("error in GetLoginCred:%w", err)
+			return storage.EncryptedData{}, fmt.Errorf("error in GetLoginCred:%w", err)
 		}
 	}
 	return encrData, nil
@@ -325,7 +317,7 @@ func (s *SQLdb) ListNotes(username string) (notenames []string, err error) {
 	rows, err := s.DB.Query(listNotesQuery, username)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, ErrDataNotFound
+			return nil, storage.ErrDataNotFound
 		}
 		return nil, fmt.Errorf("couldn't ask database in ListLoginCreds:%w", err)
 	}
@@ -350,7 +342,7 @@ func (s *SQLdb) ListNotes(username string) (notenames []string, err error) {
 	return notenames, nil
 }
 
-func (s *SQLdb) SetBinary(username string, binary Binary) error {
+func (s *SQLdb) SetBinary(username string, binary storage.Binary) error {
 	_, err := s.DB.Exec(setBinaryQuery, binary.Name, binary.Data, username)
 	if err != nil {
 		return fmt.Errorf("error setting data in SetLoginCred:%w", err)
@@ -358,14 +350,14 @@ func (s *SQLdb) SetBinary(username string, binary Binary) error {
 	return nil
 }
 
-func (s *SQLdb) GetBinary(username string, binaryname string) (binary Binary, err error) {
+func (s *SQLdb) GetBinary(username string, binaryname string) (binary storage.Binary, err error) {
 
 	err = s.DB.QueryRow(getBinaryQuery, binaryname, username).Scan(&binary.Name, &binary.Data)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return Binary{}, ErrDataNotFound
+			return storage.Binary{}, storage.ErrDataNotFound
 		} else {
-			return Binary{}, fmt.Errorf("error in GetLoginCred:%w", err)
+			return storage.Binary{}, fmt.Errorf("error in GetLoginCred:%w", err)
 		}
 	}
 	return binary, nil
@@ -376,7 +368,7 @@ func (s *SQLdb) ListBinaries(username string) (binarynames []string, err error) 
 	rows, err := s.DB.Query(listBinariesQuery, username)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, ErrDataNotFound
+			return nil, storage.ErrDataNotFound
 		}
 		return nil, fmt.Errorf("couldn't ask database in ListBinaries:%w", err)
 	}

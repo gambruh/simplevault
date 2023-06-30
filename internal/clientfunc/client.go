@@ -13,8 +13,8 @@ import (
 	"time"
 
 	"github.com/gambruh/gophkeeper/internal/config"
-	"github.com/gambruh/gophkeeper/internal/database"
-	"github.com/gambruh/gophkeeper/internal/localstorage"
+	"github.com/gambruh/gophkeeper/internal/storage"
+	"github.com/gambruh/gophkeeper/internal/storage/localstorage"
 )
 
 type Client struct {
@@ -43,23 +43,23 @@ type LocalStorage interface {
 	DeleteLocalStorage() error
 
 	//Cards processing methods
-	SaveCard(card database.Card, key []byte) error
-	GetCard(cardname string, key []byte) (card database.Card, err error)
+	SaveCard(card storage.Card, key []byte) error
+	GetCard(cardname string, key []byte) (card storage.Card, err error)
 	ListCards() (cards []string, err error)
 
 	//Login credentials processing methods
-	SaveLoginCreds(logincreds database.LoginCreds, key []byte) error
-	GetLoginCreds(logincredsname string, key []byte) (logincreds database.LoginCreds, err error)
+	SaveLoginCreds(logincreds storage.LoginCreds, key []byte) error
+	GetLoginCreds(logincredsname string, key []byte) (logincreds storage.LoginCreds, err error)
 	ListLoginCreds() (logincreds []string, err error)
 
 	//Notes processing methods
-	SaveNote(note database.Note, key []byte) error
-	GetNote(notename string, key []byte) (note database.Note, err error)
+	SaveNote(note storage.Note, key []byte) error
+	GetNote(notename string, key []byte) (note storage.Note, err error)
 	ListNotes() (notes []string, err error)
 
 	//Binaries processing methods
-	SaveBinary(binary database.Binary, key []byte) error
-	GetBinary(binaryname string, key []byte) (binary database.Binary, err error)
+	SaveBinary(binary storage.Binary, key []byte) error
+	GetBinary(binaryname string, key []byte) (binary storage.Binary, err error)
 	ListBinaries() (binaries []string, err error)
 }
 
