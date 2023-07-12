@@ -1,3 +1,4 @@
+// Package storage declares Storage interface, as well as types and errors for it
 package storage
 
 import "errors"

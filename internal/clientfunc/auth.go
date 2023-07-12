@@ -157,7 +157,7 @@ func (c *Client) loginOffline(logincreds auth.LoginData) error {
 
 func (c *Client) sendRegisterRequest(login auth.LoginData) (*http.Cookie, error) {
 	//preparing url to send to
-	url := fmt.Sprintf("%s/api/user/register", c.Server)
+	url := fmt.Sprintf("%s/api/user/register", c.Config.Address)
 	//checking if the prefix is ok
 	if !strings.HasPrefix(url, "http://") {
 		url = "http://" + url
@@ -207,7 +207,7 @@ func (c *Client) sendRegisterRequest(login auth.LoginData) (*http.Cookie, error)
 
 func (c *Client) sendLoginRequest(login auth.LoginData) (*http.Cookie, error) {
 
-	url := fmt.Sprintf("%s/api/user/login", c.Server)
+	url := fmt.Sprintf("%s/api/user/login", c.Config.Address)
 
 	if !strings.HasPrefix(url, "http://") {
 		url = "http://" + url

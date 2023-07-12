@@ -13,10 +13,15 @@ import (
 )
 
 func (c *Client) sendCardToDB(encrCard storage.EncryptedData) error {
-	url := fmt.Sprintf("%s/api/cards/add", c.Server)
+	url := fmt.Sprintf("%s/api/cards/add", c.Config.Address)
 
-	if !strings.HasPrefix(url, "http://") {
-		url = "http://" + url
+	if strings.HasPrefix(url, "http://") {
+		strings.CutPrefix(url, "http://")
+		url = "https://" + url
+	}
+
+	if !strings.HasPrefix(url, "https://") {
+		url = "https://" + url
 	}
 
 	jsbody, err := json.Marshal(encrCard)
@@ -50,9 +55,13 @@ func (c *Client) sendCardToDB(encrCard storage.EncryptedData) error {
 }
 
 func (c *Client) listCardsFromDB() (cards []string, err error) {
-	url := fmt.Sprintf("%s/api/cards/list", c.Server)
-	if !strings.HasPrefix(url, "http://") {
-		url = "http://" + url
+	url := fmt.Sprintf("%s/api/cards/list", c.Config.Address)
+	if strings.HasPrefix(url, "http://") {
+		strings.CutPrefix(url, "http://")
+		url = "https://" + url
+	}
+	if !strings.HasPrefix(url, "https://") {
+		url = "https://" + url
 	}
 
 	r, err := http.NewRequest(http.MethodGet, url, nil)
@@ -84,9 +93,13 @@ func (c *Client) listCardsFromDB() (cards []string, err error) {
 func (c *Client) getCardFromDB(cardname string) (card storage.EncryptedData, err error) {
 	var inCard storage.EncryptedData
 	inCard.Name = cardname
-	url := fmt.Sprintf("%s/api/cards/get", c.Server)
-	if !strings.HasPrefix(url, "http://") {
-		url = "http://" + url
+	url := fmt.Sprintf("%s/api/cards/get", c.Config.Address)
+	if strings.HasPrefix(url, "http://") {
+		strings.CutPrefix(url, "http://")
+		url = "https://" + url
+	}
+	if !strings.HasPrefix(url, "https://") {
+		url = "https://" + url
 	}
 
 	jsbody, err := json.Marshal(inCard)
@@ -157,10 +170,15 @@ func (c *Client) SendCardToDB(cardData storage.EncryptedData) {
 }
 
 func (c *Client) sendLoginCredsToDB(encrData storage.EncryptedData) error {
-	url := fmt.Sprintf("%s/api/logincreds/add", c.Server)
+	url := fmt.Sprintf("%s/api/logincreds/add", c.Config.Address)
 
-	if !strings.HasPrefix(url, "http://") {
-		url = "http://" + url
+	if strings.HasPrefix(url, "http://") {
+		strings.CutPrefix(url, "http://")
+		url = "https://" + url
+	}
+
+	if !strings.HasPrefix(url, "https://") {
+		url = "https://" + url
 	}
 
 	jsbody, err := json.Marshal(encrData)
@@ -194,9 +212,15 @@ func (c *Client) sendLoginCredsToDB(encrData storage.EncryptedData) error {
 }
 
 func (c *Client) listLoginCredsFromDB() (logincreds []string, err error) {
-	url := fmt.Sprintf("%s/api/logincreds/list", c.Server)
-	if !strings.HasPrefix(url, "http://") {
-		url = "http://" + url
+	url := fmt.Sprintf("%s/api/logincreds/list", c.Config.Address)
+
+	if strings.HasPrefix(url, "http://") {
+		strings.CutPrefix(url, "http://")
+		url = "https://" + url
+	}
+
+	if !strings.HasPrefix(url, "https://") {
+		url = "https://" + url
 	}
 
 	r, err := http.NewRequest(http.MethodGet, url, nil)
@@ -228,9 +252,15 @@ func (c *Client) listLoginCredsFromDB() (logincreds []string, err error) {
 func (c *Client) getLoginCredsFromDB(logincredname string) (encrData storage.EncryptedData, err error) {
 	var input storage.EncryptedData
 	input.Name = logincredname
-	url := fmt.Sprintf("%s/api/logincreds/get", c.Server)
-	if !strings.HasPrefix(url, "http://") {
-		url = "http://" + url
+	url := fmt.Sprintf("%s/api/logincreds/get", c.Config.Address)
+
+	if strings.HasPrefix(url, "http://") {
+		strings.CutPrefix(url, "http://")
+		url = "https://" + url
+	}
+
+	if !strings.HasPrefix(url, "https://") {
+		url = "https://" + url
 	}
 
 	jsbody, err := json.Marshal(input)
@@ -271,10 +301,15 @@ func (c *Client) getLoginCredsFromDB(logincredname string) (encrData storage.Enc
 }
 
 func (c *Client) sendNoteToDB(encrData storage.EncryptedData) error {
-	url := fmt.Sprintf("%s/api/notes/add", c.Server)
+	url := fmt.Sprintf("%s/api/notes/add", c.Config.Address)
 
-	if !strings.HasPrefix(url, "http://") {
-		url = "http://" + url
+	if strings.HasPrefix(url, "http://") {
+		strings.CutPrefix(url, "http://")
+		url = "https://" + url
+	}
+
+	if !strings.HasPrefix(url, "https://") {
+		url = "https://" + url
 	}
 
 	jsbody, err := json.Marshal(encrData)
@@ -308,9 +343,15 @@ func (c *Client) sendNoteToDB(encrData storage.EncryptedData) error {
 }
 
 func (c *Client) listNotesFromDB() (notes []string, err error) {
-	url := fmt.Sprintf("%s/api/notes/list", c.Server)
-	if !strings.HasPrefix(url, "http://") {
-		url = "http://" + url
+	url := fmt.Sprintf("%s/api/notes/list", c.Config.Address)
+
+	if strings.HasPrefix(url, "http://") {
+		strings.CutPrefix(url, "http://")
+		url = "https://" + url
+	}
+
+	if !strings.HasPrefix(url, "https://") {
+		url = "https://" + url
 	}
 
 	r, err := http.NewRequest(http.MethodGet, url, nil)
@@ -342,9 +383,15 @@ func (c *Client) listNotesFromDB() (notes []string, err error) {
 func (c *Client) getNoteFromDB(notename string) (encrData storage.EncryptedData, err error) {
 	var input storage.EncryptedData
 	input.Name = notename
-	url := fmt.Sprintf("%s/api/notes/get", c.Server)
-	if !strings.HasPrefix(url, "http://") {
-		url = "http://" + url
+	url := fmt.Sprintf("%s/api/notes/get", c.Config.Address)
+
+	if strings.HasPrefix(url, "http://") {
+		strings.CutPrefix(url, "http://")
+		url = "https://" + url
+	}
+
+	if !strings.HasPrefix(url, "https://") {
+		url = "https://" + url
 	}
 
 	jsbody, err := json.Marshal(input)
@@ -385,10 +432,15 @@ func (c *Client) getNoteFromDB(notename string) (encrData storage.EncryptedData,
 }
 
 func (c *Client) sendBinaryToDB(encrData storage.Binary) error {
-	url := fmt.Sprintf("%s/api/binaries/add", c.Server)
+	url := fmt.Sprintf("%s/api/binaries/add", c.Config.Address)
 
-	if !strings.HasPrefix(url, "http://") {
-		url = "http://" + url
+	if strings.HasPrefix(url, "http://") {
+		strings.CutPrefix(url, "http://")
+		url = "https://" + url
+	}
+
+	if !strings.HasPrefix(url, "https://") {
+		url = "https://" + url
 	}
 
 	jsbody, err := json.Marshal(encrData)
@@ -424,9 +476,15 @@ func (c *Client) sendBinaryToDB(encrData storage.Binary) error {
 func (c *Client) getBinaryFromDB(binaryname string) (encrData storage.Binary, err error) {
 	var input storage.Binary
 	input.Name = binaryname
-	url := fmt.Sprintf("%s/api/binaries/get", c.Server)
-	if !strings.HasPrefix(url, "http://") {
-		url = "http://" + url
+	url := fmt.Sprintf("%s/api/binaries/get", c.Config.Address)
+
+	if strings.HasPrefix(url, "http://") {
+		strings.CutPrefix(url, "http://")
+		url = "https://" + url
+	}
+
+	if !strings.HasPrefix(url, "https://") {
+		url = "https://" + url
 	}
 
 	jsbody, err := json.Marshal(input)
@@ -467,9 +525,13 @@ func (c *Client) getBinaryFromDB(binaryname string) (encrData storage.Binary, er
 }
 
 func (c *Client) listBinariesFromDB() (binaries []string, err error) {
-	url := fmt.Sprintf("%s/api/binaries/list", c.Server)
-	if !strings.HasPrefix(url, "http://") {
-		url = "http://" + url
+	url := fmt.Sprintf("%s/api/binaries/list", c.Config.Address)
+	if strings.HasPrefix(url, "http://") {
+		strings.CutPrefix(url, "http://")
+		url = "https://" + url
+	}
+	if !strings.HasPrefix(url, "https://") {
+		url = "https://" + url
 	}
 
 	r, err := http.NewRequest(http.MethodGet, url, nil)

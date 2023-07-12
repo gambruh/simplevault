@@ -24,12 +24,11 @@ func main() {
 	// вывод информации о компиляции
 	compileinfo.PrintCompileInfo(buildVersion, buildDate, buildCommit)
 
-	// Init client config
-	config.InitClientFlags()
-	config.SetClientConfig()
+	// Set client config
+	cfg := config.SetClientConfig()
 
 	//Init new client
-	client := clientfunc.NewClient()
+	client := clientfunc.NewClient(cfg)
 
 	// creating context for graceful shutdown
 	ctxShutdown, cancel := signal.NotifyContext(context.Background(), os.Interrupt)

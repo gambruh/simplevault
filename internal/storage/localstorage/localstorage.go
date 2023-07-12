@@ -1,3 +1,4 @@
+// Package localstorage provides filestorage implementation of Storage interface for a local client's storage
 package localstorage
 
 import (

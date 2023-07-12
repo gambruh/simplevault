@@ -4,6 +4,8 @@ package clientfunc
 import (
 	"bufio"
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"log"
 	"net/http"
@@ -18,14 +20,15 @@ import (
 )
 
 type Client struct {
-	//server url in host:port format
-	Server string
 
 	// storage interface to store data offline
 	Storage LocalStorage
 
 	// standard go-struct to make http-client
 	Client *http.Client
+
+	//config of the client
+	Config config.ClientConfig
 
 	// this cookie will be applied to any http-request sent from the client, in case of successful online authentication
 	AuthCookie *http.Cookie
@@ -64,11 +67,11 @@ type LocalStorage interface {
 }
 
 // NewClient function return new clientfunc.Client
-func NewClient() *Client {
+func NewClient(cfg config.ClientConfig) *Client {
 	return &Client{
-		Server:  config.ClientCfg.Address,
+		Config:  cfg,
 		Storage: localstorage.NewStorage(),
-		Client:  &http.Client{},
+		Client:  NewClientTLS(cfg.ServerCert, cfg.ClientCert, cfg.PrivateKey),
 	}
 }
 
@@ -150,5 +153,32 @@ func (c *Client) DataChecker(context context.Context, wgShutdown *sync.WaitGroup
 			}
 		}
 	}
+}
 
+// NewClientTLS creates new TLS client out of server certificate file and client certificate and private key files
+func NewClientTLS(caCertFile, clientCertFile, clientKeyFile string) *http.Client {
+
+	cert, err := tls.LoadX509KeyPair(clientCertFile, clientKeyFile)
+	if err != nil {
+		log.Fatalf("Error creating x509 keypair from client cert file %s and client key file %s", clientCertFile, clientKeyFile)
+	}
+
+	caCert, err := os.ReadFile(caCertFile)
+	if err != nil {
+		log.Fatalf("Error opening cert file %s, Error: %s", caCertFile, err)
+	}
+
+	caCertPool := x509.NewCertPool()
+	caCertPool.AppendCertsFromPEM(caCert)
+
+	t := &http.Transport{
+		TLSClientConfig: &tls.Config{
+			Certificates: []tls.Certificate{cert},
+			RootCAs:      caCertPool,
+		},
+	}
+
+	client := http.Client{Transport: t, Timeout: 15 * time.Second}
+
+	return &client
 }

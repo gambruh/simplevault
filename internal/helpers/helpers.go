@@ -1,22 +1,18 @@
+// Package helpers provide misc functions used both by server and client
 package helpers
 
 import (
 	"bufio"
-	"crypto/tls"
 	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
-	"net"
 	"os"
 	"strings"
 
-	"github.com/gambruh/gophkeeper/internal/config"
 	"github.com/gambruh/gophkeeper/internal/encrypt"
 	"github.com/gambruh/gophkeeper/internal/storage"
 )
-
-const privatekeyfile = "privatekey.pem"
 
 var (
 	ErrWrongFile = errors.New("file not found")
@@ -52,26 +48,6 @@ func CreateMapFromList(list []string) (outputMap map[string]struct{}) {
 	return outputMap
 }
 
-func CreateConfigTLS() (*tls.Config, error) {
-	cert, err := tls.LoadX509KeyPair(config.Cfg.Certificate, privatekeyfile)
-	if err != nil {
-		return nil, fmt.Errorf("error when loading tls certificate and key: %s", err)
-	}
-
-	tlsconfig := &tls.Config{
-		GetCertificate: func(info *tls.ClientHelloInfo) (*tls.Certificate, error) {
-			fmt.Printf("Received TLS handshake request from client %s:%d\n", info.Conn.RemoteAddr().String(), info.Conn.RemoteAddr().(*net.TCPAddr).Port)
-			cert, err := tls.LoadX509KeyPair(config.Cfg.Certificate, privatekeyfile)
-			if err != nil {
-				return nil, fmt.Errorf("error when loading KeyPair in CreateConfigTLS: %s", err)
-			}
-			return &cert, nil
-		},
-		Certificates: []tls.Certificate{cert},
-	}
-	return tlsconfig, nil
-}
-
 func EncryptCardData(card storage.Card, key []byte) (string, error) {
 	// concatenating card to string
 	cardStr := card.Cardname + "," + card.Number + "," + card.Name + "," + card.Surname + "," + card.ValidTill + "," + card.Code
@@ -87,6 +63,7 @@ func EncryptCardData(card storage.Card, key []byte) (string, error) {
 	return encodedData, nil
 }
 
+// DecryptCardData returns storage.Card struct out of encrypted data received from database
 func DecryptCardData(encrCard storage.EncryptedData, key []byte) (storage.Card, error) {
 	var card storage.Card
 	decodedData, err := base64.StdEncoding.DecodeString(encrCard.Data)
@@ -137,6 +114,7 @@ func EncryptLoginCredsData(logincred storage.LoginCreds, key []byte) (string, er
 	return encodedData, nil
 }
 
+// DecryptLoginCredsData returns storage.LoginCreds struct out of encrypted data received from database
 func DecryptLoginCredsData(encrData storage.EncryptedData, key []byte) (storage.LoginCreds, error) {
 	var logincred storage.LoginCreds
 
@@ -169,6 +147,7 @@ func DecryptLoginCredsData(encrData storage.EncryptedData, key []byte) (storage.
 	return logincred, nil
 }
 
+// SplitFurther is a helper function to work with commands in CLI
 func SplitFurther(input []string) (output []string) {
 
 	if len(input) != 2 {
@@ -183,6 +162,7 @@ func SplitFurther(input []string) (output []string) {
 	return output
 }
 
+// EncryptNoteData encrypts storage.Note and saves it to a hexadecimal string to be stored in a database
 func EncryptNoteData(note storage.Note, key []byte) (string, error) {
 	// concatenating data to string
 	noteStr := note.Name + "," + note.Text
@@ -225,6 +205,7 @@ func DecryptNoteData(encrData storage.EncryptedData, key []byte) (note storage.N
 	return note, nil
 }
 
+// ReadBinaryFile reads data from binary file and returns its contents
 func ReadBinaryFile(filename string) ([]byte, error) {
 
 	file, err := os.Open(filename)
@@ -243,6 +224,7 @@ func ReadBinaryFile(filename string) ([]byte, error) {
 	return data, nil
 }
 
+// PrepareBinary returns storage.Binary struct out of binary file which can be saved to a storage
 func PrepareBinary(binaryname, sendfolder string) (newbinary storage.Binary, err error) {
 	if strings.HasPrefix(sendfolder, "/") {
 		sendfolder = strings.TrimLeft(sendfolder, "/")

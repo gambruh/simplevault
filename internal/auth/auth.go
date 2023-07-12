@@ -1,3 +1,5 @@
+// Package auth provides authentication and authorization functions
+// it is intentionally done separately
 package auth
 
 import (
@@ -63,6 +65,9 @@ func GenerateToken(login string) (string, error) {
 	return tokenString, nil
 }
 
+// AuthMiddleware checks cookies attached to http request
+// If not valid then http.StatusUnauthorized will return
+// If valid it will pass the request to the handler
 func AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
@@ -97,6 +102,7 @@ func AuthMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+// NewAuthDB returns connection to authDB
 func NewAuthDB(postgresStr string) *AuthDB {
 	db, _ := sql.Open("postgres", postgresStr)
 	return &AuthDB{
@@ -104,6 +110,7 @@ func NewAuthDB(postgresStr string) *AuthDB {
 	}
 }
 
+// GetAuthDB returns new auth storage
 func GetAuthDB() (authstorage AuthStorage) {
 
 	db := NewAuthDB(config.Cfg.Database)
@@ -113,6 +120,7 @@ func GetAuthDB() (authstorage AuthStorage) {
 	return authstorage
 }
 
+// CheckTableExists is a helper function to check if there is already a table with specifed name in a database
 func (s *AuthDB) CheckTableExists(tablename string) error {
 	var check bool
 
@@ -127,6 +135,7 @@ func (s *AuthDB) CheckTableExists(tablename string) error {
 	return nil
 }
 
+// InitAuthDB creates tables in a fresh database.
 func (s *AuthDB) InitAuthDB() error {
 	err := s.CreateUsersTable()
 	if err != nil {
@@ -139,6 +148,7 @@ func (s *AuthDB) InitAuthDB() error {
 	return nil
 }
 
+// CreateUsersTable creates table "users"
 func (s *AuthDB) CreateUsersTable() error {
 	err := s.CheckTableExists(userstablename)
 	if err == ErrTableDoesntExist {
@@ -149,6 +159,8 @@ func (s *AuthDB) CreateUsersTable() error {
 	}
 	return nil
 }
+
+// CreatePasswordsTable creates table "passwords"
 func (s *AuthDB) CreatePasswordsTable() error {
 	err := s.CheckTableExists(passwordstablename)
 	if err == ErrTableDoesntExist {
@@ -161,6 +173,8 @@ func (s *AuthDB) CreatePasswordsTable() error {
 	return nil
 }
 
+// Register attempts to save login and password hash in a database
+// returns error in case if the login is already exists in the database
 func (s *AuthDB) Register(login string, password string) error {
 	var username string
 	hashedpassword, err := argon2id.CreateHash(password, argon2id.DefaultParams)
@@ -181,6 +195,8 @@ func (s *AuthDB) Register(login string, password string) error {
 	}
 }
 
+// VerifyCredentials compares login and password with existing in the database login and password hash
+// returns error if no coincidence found, or if password hashes didn't match
 func (s *AuthDB) VerifyCredentials(login string, password string) error {
 	var (
 		id   int
@@ -209,6 +225,7 @@ func (s *AuthDB) VerifyCredentials(login string, password string) error {
 	return nil
 }
 
+// Register is a method for inmemory implementation of AuthStorage interface
 func (s *AuthMemStorage) Register(login string, password string) error {
 	_, contains := s.Data[login]
 	if contains {
@@ -218,6 +235,7 @@ func (s *AuthMemStorage) Register(login string, password string) error {
 	return nil
 }
 
+// VerifyCredentials is a method for inmemory implementation of AuthStorage interface
 func (s AuthMemStorage) VerifyCredentials(login string, password string) error {
 	check, contains := s.Data[login]
 	if contains && check == password {
@@ -226,6 +244,7 @@ func (s AuthMemStorage) VerifyCredentials(login string, password string) error {
 	return ErrWrongPassword
 }
 
+// NewMemStorage returns inmemory implementation of AuthStorage interface
 func NewMemStorage() *AuthMemStorage {
 	return &AuthMemStorage{
 		Data: make(map[string]string),

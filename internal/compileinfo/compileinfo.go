@@ -5,7 +5,6 @@ import "fmt"
 
 // PrintCompileInfo prints state at the build time
 func PrintCompileInfo(buildVersion string, buildDate string, buildCommit string) {
-	// вывод информации о компиляции
 	if buildVersion == "" {
 		buildVersion = "N/A"
 	}

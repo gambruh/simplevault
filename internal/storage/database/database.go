@@ -1,4 +1,4 @@
-// package database is responsible for interaction with postgres DB
+// Package database provides Postgres DB implementation of Storage interface
 package database
 
 import (
@@ -120,7 +120,6 @@ func (s *SQLdb) createLoginCredsTable() error {
 		if _, err = s.DB.Exec(createUniqueLoginCredsConstraint); err != nil {
 			return err
 		}
-
 	}
 	return nil
 }
@@ -228,7 +227,6 @@ func (s *SQLdb) ListCards(username string) (cardnames []string, err error) {
 			return nil, fmt.Errorf("error scanning in ListCards:%w", err)
 		}
 		cardnames = append(cardnames, cardname)
-
 	}
 
 	err = rows.Err()
