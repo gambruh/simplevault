@@ -63,7 +63,7 @@ func DecryptFromString(s string, key []byte) (decryptedData []byte, err error) {
 	return DecryptData(dst, key)
 }
 
-// DecryptFromString initially encodes data from []byte to hexadecimal string, then cals DecryptData
+// EncryptFromString initially encodes data from []byte to hexadecimal string, then cals EncryptData
 func EncryptFromString(s string, key []byte) (decryptedData []byte, err error) {
 	dst, err := hex.DecodeString(s)
 	if err != nil {

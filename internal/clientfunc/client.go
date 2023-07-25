@@ -163,13 +163,13 @@ func NewClientTLS(caCertFile, clientCertFile, clientKeyFile string) *http.Client
 		log.Fatalf("Error creating x509 keypair from client cert file %s and client key file %s", clientCertFile, clientKeyFile)
 	}
 
-	caCert, err := os.ReadFile(caCertFile)
-	if err != nil {
-		log.Fatalf("Error opening cert file %s, Error: %s", caCertFile, err)
-	}
+	//caCert, err := os.ReadFile(caCertFile)
+	//if err != nil {
+	///	log.Fatalf("Error opening cert file %s, Error: %s", caCertFile, err)
+	//}
 
 	caCertPool := x509.NewCertPool()
-	caCertPool.AppendCertsFromPEM(caCert)
+	//caCertPool.AppendCertsFromPEM(caCert)
 
 	t := &http.Transport{
 		TLSClientConfig: &tls.Config{

@@ -50,6 +50,8 @@ func NewStorage() *LocalStorage {
 
 }
 
+// InitStorage creates required directories if they doesn't exist yet
+// If files and directories exists, it checks for it's contents and get the data loaded into struct fields
 func (s *LocalStorage) InitStorage(key []byte) error {
 	//create local folders if needed
 	os.Mkdir(config.ClientCfg.LocalStorage, 0600)
@@ -87,6 +89,7 @@ func (s *LocalStorage) InitStorage(key []byte) error {
 
 }
 
+// DeleteLocalStorage removes files from local file storage
 func (s *LocalStorage) DeleteLocalStorage() error {
 
 	if err := s.deleteCardsFile(); err != nil {
@@ -178,6 +181,7 @@ func (s *LocalStorage) SaveCard(card storage.Card, key []byte) error {
 	return nil
 }
 
+// GetCard gets the card data by its name, decrypts it and returns as a Card struct
 func (s *LocalStorage) GetCard(cardname string, key []byte) (card storage.Card, err error) {
 	s.Mu.Lock()
 	defer s.Mu.Unlock()
@@ -226,6 +230,8 @@ func (s *LocalStorage) GetCard(cardname string, key []byte) (card storage.Card, 
 	return storage.Card{}, storage.ErrDataNotFound
 }
 
+// ListCards returns a list of names of cards saved in Storage.
+// Names are taken from s.Cards field of the LocalStorage struct
 func (s *LocalStorage) ListCards() (cards []string, err error) {
 	s.Mu.Lock()
 	defer s.Mu.Unlock()
@@ -236,6 +242,7 @@ func (s *LocalStorage) ListCards() (cards []string, err error) {
 	return s.Cards, nil
 }
 
+// ListCardsFromFile checks cards file and returns a list of names of cards saved in it.
 func (s *LocalStorage) ListCardsFromFile(key []byte) (cards []string, err error) {
 	s.Mu.Lock()
 	defer s.Mu.Unlock()
@@ -285,6 +292,7 @@ func (s *LocalStorage) lookupCard(cardname string) bool {
 	return false
 }
 
+// SaveLoginCreds encrypts and saves login credentials in the client's file storage
 func (s *LocalStorage) SaveLoginCreds(logincreds storage.LoginCreds, key []byte) error {
 	s.Mu.Lock()
 	defer s.Mu.Unlock()
@@ -333,6 +341,7 @@ func (s *LocalStorage) lookupLoginCreds(logincreds string) bool {
 	return false
 }
 
+// GetLoginCreds gets login credentials from local storage by the logincreds name
 func (s *LocalStorage) GetLoginCreds(logincredsname string, key []byte) (logincreds storage.LoginCreds, err error) {
 	s.Mu.Lock()
 	defer s.Mu.Unlock()
@@ -378,6 +387,7 @@ func (s *LocalStorage) GetLoginCreds(logincredsname string, key []byte) (logincr
 	return storage.LoginCreds{}, storage.ErrDataNotFound
 }
 
+// ListLoginCreds returns a list of login credential names saves in a structure
 func (s *LocalStorage) ListLoginCreds() (logincreds []string, err error) {
 	s.Mu.Lock()
 	defer s.Mu.Unlock()
@@ -387,6 +397,7 @@ func (s *LocalStorage) ListLoginCreds() (logincreds []string, err error) {
 	return s.Logincreds, nil
 }
 
+// ListLoginCredsFromFile checks and returns list of login credential names saves from the file
 func (s *LocalStorage) ListLoginCredsFromFile(key []byte) (logincreds []string, err error) {
 	s.Mu.Lock()
 	defer s.Mu.Unlock()

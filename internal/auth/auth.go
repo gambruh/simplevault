@@ -1,5 +1,5 @@
 // Package auth provides authentication and authorization functions
-// it is intentionally done separately
+// it is separated in case if other auth will be used
 package auth
 
 import (
@@ -40,7 +40,7 @@ type AuthDB struct {
 	db *sql.DB
 }
 
-// типы ошибок
+// Authentication errors
 var (
 	ErrUserNotFound     = errors.New("user not found in database")
 	ErrTableDoesntExist = errors.New("table doesn't exist")
