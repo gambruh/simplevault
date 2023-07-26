@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/gambruh/gophkeeper/internal/storage"
+	"github.com/gambruh/simplevault/internal/storage"
 )
 
 // MemStorage struct is supposed to be used in unit-tests only

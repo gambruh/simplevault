@@ -5,7 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gambruh/gophkeeper/internal/config"
+	"github.com/gambruh/simplevault/internal/config"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -77,7 +77,7 @@ func TestAuthMiddleware(t *testing.T) {
 			}
 
 			cookie := http.Cookie{
-				Name:  "gophkeeper-auth",
+				Name:  "simplevault-auth",
 				Value: tt.token,
 			}
 			req.AddCookie(&cookie)

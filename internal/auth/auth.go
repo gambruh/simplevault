@@ -14,7 +14,7 @@ import (
 	"github.com/alexedwards/argon2id"
 	"github.com/dgrijalva/jwt-go"
 
-	"github.com/gambruh/gophkeeper/internal/config"
+	"github.com/gambruh/simplevault/internal/config"
 )
 
 const (
@@ -77,7 +77,7 @@ func AuthMiddleware(next http.Handler) http.Handler {
 			jwt.StandardClaims
 		}
 
-		cookie, err := r.Cookie("gophkeeper-auth")
+		cookie, err := r.Cookie("simplevault-auth")
 		if err != nil {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return

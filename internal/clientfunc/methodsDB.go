@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/gambruh/gophkeeper/internal/storage"
+	"github.com/gambruh/simplevault/internal/storage"
 )
 
 func (c *Client) sendCardToDB(encrCard storage.EncryptedData) error {

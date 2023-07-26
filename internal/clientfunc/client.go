@@ -14,9 +14,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gambruh/gophkeeper/internal/config"
-	"github.com/gambruh/gophkeeper/internal/storage"
-	"github.com/gambruh/gophkeeper/internal/storage/localstorage"
+	"github.com/gambruh/simplevault/internal/config"
+	"github.com/gambruh/simplevault/internal/storage"
+	"github.com/gambruh/simplevault/internal/storage/localstorage"
 )
 
 type Client struct {
