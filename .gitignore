@@ -1,4 +1,3 @@
-/internal/storage/
 /cmd/client/localstorage/
 /cmd/client/userdata/user.json
 /cmd/client/userdata

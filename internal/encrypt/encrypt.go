@@ -1,3 +1,4 @@
+// Package encrypt provides encryption/decryption actions
 package encrypt
 
 import (
@@ -7,6 +8,7 @@ import (
 	"fmt"
 )
 
+// EncryptData encrypts the data using secret key and returns encrypted result
 func EncryptData(data, key []byte) ([]byte, error) {
 
 	aesblock, err := aes.NewCipher(key)
@@ -27,6 +29,7 @@ func EncryptData(data, key []byte) ([]byte, error) {
 	return encryptedData, nil
 }
 
+// DecryptData decrypts []byte data, using the secret key, and returns the result
 func DecryptData(encryptedData, key []byte) (decryptedData []byte, err error) {
 
 	aesblock, err := aes.NewCipher(key[:])
@@ -51,6 +54,7 @@ func DecryptData(encryptedData, key []byte) (decryptedData []byte, err error) {
 	return decryptedData, nil
 }
 
+// DecryptFromString initially decodes data from hexadecimal string to []byte, then cals DecryptData
 func DecryptFromString(s string, key []byte) (decryptedData []byte, err error) {
 	dst, err := hex.DecodeString(s)
 	if err != nil {
@@ -59,6 +63,7 @@ func DecryptFromString(s string, key []byte) (decryptedData []byte, err error) {
 	return DecryptData(dst, key)
 }
 
+// EncryptFromString initially encodes data from []byte to hexadecimal string, then cals EncryptData
 func EncryptFromString(s string, key []byte) (decryptedData []byte, err error) {
 	dst, err := hex.DecodeString(s)
 	if err != nil {

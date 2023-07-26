@@ -1,3 +1,6 @@
+// Package handlers provides handlers logic for a http/https server
+// It works with two storages - authentication and data storage
+// It also provides NewService construction
 package handlers
 
 import (
@@ -13,29 +16,34 @@ import (
 
 	"github.com/gambruh/gophkeeper/internal/auth"
 	"github.com/gambruh/gophkeeper/internal/config"
-	"github.com/gambruh/gophkeeper/internal/database"
+	"github.com/gambruh/gophkeeper/internal/storage"
+	"github.com/gambruh/gophkeeper/internal/storage/database"
 )
 
+// WebService is a class to
 type WebService struct {
 	Storage     Storage
 	AuthStorage AuthStorage
 	Mu          *sync.Mutex
 }
 
+// AuthStorage stores login and passwords of app users
+// Different databases for authentication implementation can be used
 type AuthStorage interface {
 	Register(login string, password string) error
 	VerifyCredentials(login string, password string) error
 }
 
+// Storage interface is a data storage. Implementation may vary
 type Storage interface {
-	SetLoginCred(username string, logincreds database.EncryptedData) error
-	SetNote(username string, note database.EncryptedData) error
-	SetBinary(username string, binary database.Binary) error
-	SetCard(username string, card database.EncryptedCard) error
-	GetLoginCred(username string, name string) (database.EncryptedData, error)
-	GetNote(username string, name string) (database.EncryptedData, error)
-	GetBinary(username string, name string) (database.Binary, error)
-	GetCard(username string, name string) (database.EncryptedCard, error)
+	SetLoginCred(username string, logincreds storage.EncryptedData) error
+	SetNote(username string, note storage.EncryptedData) error
+	SetBinary(username string, binary storage.Binary) error
+	SetCard(username string, card storage.EncryptedData) error
+	GetLoginCred(username string, name string) (storage.EncryptedData, error)
+	GetNote(username string, name string) (storage.EncryptedData, error)
+	GetBinary(username string, name string) (storage.Binary, error)
+	GetCard(username string, name string) (storage.EncryptedData, error)
 	ListLoginCreds(username string) ([]string, error)
 	ListNotes(username string) ([]string, error)
 	ListBinaries(username string) ([]string, error)
@@ -47,6 +55,7 @@ var (
 	ErrUsernameIsTaken  = errors.New("username is taken")
 )
 
+// handlers for a server
 func (h *WebService) Service() http.Handler {
 
 	r := chi.NewRouter()
@@ -82,6 +91,7 @@ func NewService(storage Storage, authstorage AuthStorage) *WebService {
 	}
 }
 
+// Register is a new user registration handler
 func (h *WebService) Register(w http.ResponseWriter, r *http.Request) {
 	var data auth.LoginData
 	err := json.NewDecoder(r.Body).Decode(&data)
@@ -129,6 +139,7 @@ func (h *WebService) Register(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// Login allows a user to login
 func (h *WebService) Login(w http.ResponseWriter, r *http.Request) {
 	var data auth.LoginData
 	err := json.NewDecoder(r.Body).Decode(&data)
@@ -174,8 +185,10 @@ func (h *WebService) Login(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+// AddLoginCreds sets new login credentials in a database
+// returns error if there is already login with the same for a current user
 func (h *WebService) AddLoginCreds(w http.ResponseWriter, r *http.Request) {
-	var logincred database.EncryptedData
+	var logincred storage.EncryptedData
 
 	contentType := r.Header.Get("Content-type")
 	if contentType != "application/json" {
@@ -206,8 +219,10 @@ func (h *WebService) AddLoginCreds(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// AddCard sets new card data in a database
+// returns http.StatusConflict error if there is already card with the same name for a current user
 func (h *WebService) AddCard(w http.ResponseWriter, r *http.Request) {
-	var carddata database.EncryptedCard
+	var carddata storage.EncryptedData
 
 	contentType := r.Header.Get("Content-type")
 	if contentType != "application/json" {
@@ -247,7 +262,7 @@ func (h *WebService) ListCards(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("Content-type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(cards)
-	case database.ErrDataNotFound:
+	case storage.ErrDataNotFound:
 		w.WriteHeader(http.StatusNoContent)
 	default:
 		log.Println("error in ListCards handler:", err)
@@ -264,7 +279,7 @@ func (h *WebService) ListLoginCreds(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("Content-type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(logins)
-	case database.ErrDataNotFound:
+	case storage.ErrDataNotFound:
 		w.WriteHeader(http.StatusNoContent)
 	default:
 		log.Println("error in ListCards handler:", err)
@@ -273,7 +288,7 @@ func (h *WebService) ListLoginCreds(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *WebService) GetCard(w http.ResponseWriter, r *http.Request) {
-	var carddata database.EncryptedCard
+	var carddata storage.EncryptedData
 	username := r.Context().Value(config.UserID("userID"))
 
 	contentType := r.Header.Get("Content-type")
@@ -288,14 +303,14 @@ func (h *WebService) GetCard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	card, err := h.Storage.GetCard(username.(string), carddata.Cardname)
+	card, err := h.Storage.GetCard(username.(string), carddata.Name)
 
 	switch err {
 	case nil:
 		w.Header().Add("Content-type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(card)
-	case database.ErrDataNotFound:
+	case storage.ErrDataNotFound:
 		w.WriteHeader(http.StatusNoContent)
 	default:
 		log.Println("error in GetCard handler:", err)
@@ -305,7 +320,7 @@ func (h *WebService) GetCard(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *WebService) GetLoginCreds(w http.ResponseWriter, r *http.Request) {
-	var input database.EncryptedData
+	var input storage.EncryptedData
 
 	username := r.Context().Value(config.UserID("userID"))
 
@@ -327,7 +342,7 @@ func (h *WebService) GetLoginCreds(w http.ResponseWriter, r *http.Request) {
 	case nil:
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(logincreds)
-	case database.ErrDataNotFound:
+	case storage.ErrDataNotFound:
 		w.WriteHeader(http.StatusNoContent)
 	default:
 		log.Println("error in GetLoginCreds handler:", err)
@@ -337,7 +352,7 @@ func (h *WebService) GetLoginCreds(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *WebService) AddNote(w http.ResponseWriter, r *http.Request) {
-	var note database.EncryptedData
+	var note storage.EncryptedData
 
 	contentType := r.Header.Get("Content-type")
 	if contentType != "application/json" {
@@ -369,7 +384,7 @@ func (h *WebService) AddNote(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *WebService) GetNote(w http.ResponseWriter, r *http.Request) {
-	var input database.EncryptedData
+	var input storage.EncryptedData
 
 	username := r.Context().Value(config.UserID("userID"))
 
@@ -391,7 +406,7 @@ func (h *WebService) GetNote(w http.ResponseWriter, r *http.Request) {
 	case nil:
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(note)
-	case database.ErrDataNotFound:
+	case storage.ErrDataNotFound:
 		w.WriteHeader(http.StatusNoContent)
 	default:
 		log.Println("error in GetNote handler:", err)
@@ -409,7 +424,7 @@ func (h *WebService) ListNotes(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("Content-type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(notes)
-	case database.ErrDataNotFound:
+	case storage.ErrDataNotFound:
 		w.WriteHeader(http.StatusNoContent)
 	default:
 		log.Println("error in ListNotes handler:", err)
@@ -418,7 +433,7 @@ func (h *WebService) ListNotes(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *WebService) AddBinary(w http.ResponseWriter, r *http.Request) {
-	var binary database.Binary
+	var binary storage.Binary
 
 	contentType := r.Header.Get("Content-type")
 	if contentType != "application/json" {
@@ -450,7 +465,7 @@ func (h *WebService) AddBinary(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *WebService) GetBinary(w http.ResponseWriter, r *http.Request) {
-	var input database.Binary
+	var input storage.Binary
 
 	username := r.Context().Value(config.UserID("userID"))
 
@@ -472,7 +487,7 @@ func (h *WebService) GetBinary(w http.ResponseWriter, r *http.Request) {
 	case nil:
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(binary)
-	case database.ErrDataNotFound:
+	case storage.ErrDataNotFound:
 		w.WriteHeader(http.StatusNoContent)
 	default:
 		log.Println("error in GetNote handler:", err)
@@ -490,7 +505,7 @@ func (h *WebService) ListBinaries(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("Content-type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(notes)
-	case database.ErrDataNotFound:
+	case storage.ErrDataNotFound:
 		w.WriteHeader(http.StatusNoContent)
 	default:
 		log.Println("error in ListNotes handler:", err)

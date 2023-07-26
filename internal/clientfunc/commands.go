@@ -5,8 +5,8 @@ import (
 	"strings"
 
 	"github.com/gambruh/gophkeeper/internal/config"
-	"github.com/gambruh/gophkeeper/internal/database"
 	"github.com/gambruh/gophkeeper/internal/helpers"
+	"github.com/gambruh/gophkeeper/internal/storage"
 )
 
 // Cards
@@ -21,7 +21,7 @@ func (c *Client) SetCardCommand(input []string) {
 		printSetCardSyntax()
 		return
 	}
-	var cardData database.Card
+	var cardData storage.Card
 	for i, data := range input {
 		switch i {
 		case 0:
@@ -62,7 +62,7 @@ func (c *Client) GetCardCommand(input []string) {
 
 	card, err := c.getCardFromStorage(cardname)
 	if err != nil {
-		if err == database.ErrDataNotFound {
+		if err == storage.ErrDataNotFound {
 			fmt.Println("No data in local storage")
 			return
 		} else {
@@ -109,7 +109,7 @@ func (c *Client) SetLoginCredsCommand(input []string) {
 		printSetLoginCredsSyntax()
 		return
 	}
-	var logincreds database.LoginCreds
+	var logincreds storage.LoginCreds
 	for i, data := range input {
 		switch i {
 		case 0:
@@ -201,7 +201,7 @@ func (c *Client) SetNoteCommand(input []string) {
 	}
 	notetext = notetext[1 : len(notetext)-1]
 
-	var note database.Note
+	var note storage.Note
 	note.Name = notename
 	note.Text = notetext
 

@@ -1,22 +1,18 @@
+// Package helpers provide misc functions used both by server and client
 package helpers
 
 import (
 	"bufio"
-	"crypto/tls"
 	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
-	"net"
 	"os"
 	"strings"
 
-	"github.com/gambruh/gophkeeper/internal/config"
-	"github.com/gambruh/gophkeeper/internal/database"
 	"github.com/gambruh/gophkeeper/internal/encrypt"
+	"github.com/gambruh/gophkeeper/internal/storage"
 )
-
-const privatekeyfile = "privatekey.pem"
 
 var (
 	ErrWrongFile = errors.New("file not found")
@@ -52,27 +48,7 @@ func CreateMapFromList(list []string) (outputMap map[string]struct{}) {
 	return outputMap
 }
 
-func CreateConfigTLS() (*tls.Config, error) {
-	cert, err := tls.LoadX509KeyPair(config.Cfg.Certificate, privatekeyfile)
-	if err != nil {
-		return nil, fmt.Errorf("error when loading tls certificate and key: %s", err)
-	}
-
-	tlsconfig := &tls.Config{
-		GetCertificate: func(info *tls.ClientHelloInfo) (*tls.Certificate, error) {
-			fmt.Printf("Received TLS handshake request from client %s:%d\n", info.Conn.RemoteAddr().String(), info.Conn.RemoteAddr().(*net.TCPAddr).Port)
-			cert, err := tls.LoadX509KeyPair(config.Cfg.Certificate, privatekeyfile)
-			if err != nil {
-				return nil, fmt.Errorf("error when loading KeyPair in CreateConfigTLS: %s", err)
-			}
-			return &cert, nil
-		},
-		Certificates: []tls.Certificate{cert},
-	}
-	return tlsconfig, nil
-}
-
-func EncryptCardData(card database.Card, key []byte) (string, error) {
+func EncryptCardData(card storage.Card, key []byte) (string, error) {
 	// concatenating card to string
 	cardStr := card.Cardname + "," + card.Number + "," + card.Name + "," + card.Surname + "," + card.ValidTill + "," + card.Code
 
@@ -87,16 +63,17 @@ func EncryptCardData(card database.Card, key []byte) (string, error) {
 	return encodedData, nil
 }
 
-func DecryptCardData(encrCard database.EncryptedCard, key []byte) (database.Card, error) {
-	var card database.Card
+// DecryptCardData returns storage.Card struct out of encrypted data received from database
+func DecryptCardData(encrCard storage.EncryptedData, key []byte) (storage.Card, error) {
+	var card storage.Card
 	decodedData, err := base64.StdEncoding.DecodeString(encrCard.Data)
 	if err != nil {
-		return database.Card{}, err
+		return storage.Card{}, err
 	}
 
 	decryptedData, err := encrypt.DecryptData(decodedData, key)
 	if err != nil {
-		return database.Card{}, err
+		return storage.Card{}, err
 	}
 
 	dst := string(decryptedData)
@@ -106,7 +83,7 @@ func DecryptCardData(encrCard database.EncryptedCard, key []byte) (database.Card
 	for i, data := range cardArr {
 		switch i {
 		case 0:
-			card.Cardname = encrCard.Cardname
+			card.Cardname = encrCard.Name
 		case 1:
 			card.Number = data
 		case 2:
@@ -122,7 +99,7 @@ func DecryptCardData(encrCard database.EncryptedCard, key []byte) (database.Card
 	return card, nil
 }
 
-func EncryptLoginCredsData(logincred database.LoginCreds, key []byte) (string, error) {
+func EncryptLoginCredsData(logincred storage.LoginCreds, key []byte) (string, error) {
 	// concatenating data to string
 	logincredStr := logincred.Name + "," + logincred.Site + "," + logincred.Login + "," + logincred.Password
 
@@ -137,17 +114,18 @@ func EncryptLoginCredsData(logincred database.LoginCreds, key []byte) (string, e
 	return encodedData, nil
 }
 
-func DecryptLoginCredsData(encrData database.EncryptedData, key []byte) (database.LoginCreds, error) {
-	var logincred database.LoginCreds
+// DecryptLoginCredsData returns storage.LoginCreds struct out of encrypted data received from database
+func DecryptLoginCredsData(encrData storage.EncryptedData, key []byte) (storage.LoginCreds, error) {
+	var logincred storage.LoginCreds
 
 	decodedData, err := base64.StdEncoding.DecodeString(encrData.Data)
 	if err != nil {
-		return database.LoginCreds{}, err
+		return storage.LoginCreds{}, err
 	}
 
 	decryptedData, err := encrypt.DecryptData(decodedData, key)
 	if err != nil {
-		return database.LoginCreds{}, err
+		return storage.LoginCreds{}, err
 	}
 
 	dst := string(decryptedData)
@@ -169,6 +147,7 @@ func DecryptLoginCredsData(encrData database.EncryptedData, key []byte) (databas
 	return logincred, nil
 }
 
+// SplitFurther is a helper function to work with commands in CLI
 func SplitFurther(input []string) (output []string) {
 
 	if len(input) != 2 {
@@ -183,7 +162,8 @@ func SplitFurther(input []string) (output []string) {
 	return output
 }
 
-func EncryptNoteData(note database.Note, key []byte) (string, error) {
+// EncryptNoteData encrypts storage.Note and saves it to a hexadecimal string to be stored in a database
+func EncryptNoteData(note storage.Note, key []byte) (string, error) {
 	// concatenating data to string
 	noteStr := note.Name + "," + note.Text
 
@@ -198,16 +178,16 @@ func EncryptNoteData(note database.Note, key []byte) (string, error) {
 	return encodedData, nil
 }
 
-func DecryptNoteData(encrData database.EncryptedData, key []byte) (note database.Note, err error) {
+func DecryptNoteData(encrData storage.EncryptedData, key []byte) (note storage.Note, err error) {
 
 	decodedData, err := base64.StdEncoding.DecodeString(encrData.Data)
 	if err != nil {
-		return database.Note{}, err
+		return storage.Note{}, err
 	}
 
 	decryptedData, err := encrypt.DecryptData(decodedData, key)
 	if err != nil {
-		return database.Note{}, err
+		return storage.Note{}, err
 	}
 
 	dst := string(decryptedData)
@@ -225,6 +205,7 @@ func DecryptNoteData(encrData database.EncryptedData, key []byte) (note database
 	return note, nil
 }
 
+// ReadBinaryFile reads data from binary file and returns its contents
 func ReadBinaryFile(filename string) ([]byte, error) {
 
 	file, err := os.Open(filename)
@@ -243,7 +224,8 @@ func ReadBinaryFile(filename string) ([]byte, error) {
 	return data, nil
 }
 
-func PrepareBinary(binaryname, sendfolder string) (newbinary database.Binary, err error) {
+// PrepareBinary returns storage.Binary struct out of binary file which can be saved to a storage
+func PrepareBinary(binaryname, sendfolder string) (newbinary storage.Binary, err error) {
 	if strings.HasPrefix(sendfolder, "/") {
 		sendfolder = strings.TrimLeft(sendfolder, "/")
 		sendfolder = "./" + sendfolder
@@ -254,12 +236,12 @@ func PrepareBinary(binaryname, sendfolder string) (newbinary database.Binary, er
 	}
 
 	if len(binaryname) == 0 {
-		return database.Binary{}, ErrEmptyName
+		return storage.Binary{}, ErrEmptyName
 	}
 
 	data, err := ReadBinaryFile(sendfolder + "/" + binaryname)
 	if err != nil {
-		return database.Binary{}, nil
+		return storage.Binary{}, nil
 	}
 
 	newbinary.Name = binaryname
