@@ -8,6 +8,10 @@ import (
 )
 
 func Test_getUserDataFromFile(t *testing.T) {
+	// creation of a temp file
+
+	// filling the file with some values
+
 	tests := []struct {
 		name    string
 		want    auth.LoginData
@@ -27,4 +31,7 @@ func Test_getUserDataFromFile(t *testing.T) {
 			}
 		})
 	}
+
+	// deleting temp file
+
 }

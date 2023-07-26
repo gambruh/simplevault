@@ -11,9 +11,9 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/alexedwards/argon2id"
 	"github.com/dgrijalva/jwt-go"
 
-	"github.com/gambruh/gophkeeper/internal/argon2id"
 	"github.com/gambruh/gophkeeper/internal/config"
 )
 
@@ -49,6 +49,7 @@ var (
 	ErrWrongPassword    = errors.New("wrong password")
 )
 
+// GenerateToken returns a jwt token string. That string will be added to cookies.
 func GenerateToken(login string) (string, error) {
 	// Create a new token object, specifying the signing method and the claims
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{

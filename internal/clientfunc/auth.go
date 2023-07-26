@@ -12,7 +12,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/gambruh/gophkeeper/internal/argon2id"
+	"github.com/alexedwards/argon2id"
+
 	"github.com/gambruh/gophkeeper/internal/auth"
 	"github.com/gambruh/gophkeeper/internal/config"
 	"github.com/gambruh/gophkeeper/internal/helpers"
