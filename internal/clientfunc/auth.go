@@ -14,9 +14,9 @@ import (
 
 	"github.com/alexedwards/argon2id"
 
-	"github.com/gambruh/gophkeeper/internal/auth"
-	"github.com/gambruh/gophkeeper/internal/config"
-	"github.com/gambruh/gophkeeper/internal/helpers"
+	"github.com/gambruh/simplevault/internal/auth"
+	"github.com/gambruh/simplevault/internal/config"
+	"github.com/gambruh/simplevault/internal/helpers"
 )
 
 func getUserDataFromFile() (auth.LoginData, error) {
@@ -190,7 +190,7 @@ func (c *Client) sendRegisterRequest(login auth.LoginData) (*http.Cookie, error)
 	case 200:
 		cookies := res.Cookies()
 		for _, cookie := range cookies {
-			if cookie.Name == "gophkeeper-auth" {
+			if cookie.Name == "simplevault-auth" {
 				return cookie, nil
 			}
 		}
@@ -234,7 +234,7 @@ func (c *Client) sendLoginRequest(login auth.LoginData) (*http.Cookie, error) {
 	case 200:
 		cookies := res.Cookies()
 		for _, cookie := range cookies {
-			if cookie.Name == "gophkeeper-auth" {
+			if cookie.Name == "simplevault-auth" {
 				return cookie, nil
 			}
 		}

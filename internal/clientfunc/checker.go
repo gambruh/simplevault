@@ -3,8 +3,8 @@ package clientfunc
 import (
 	"fmt"
 
-	"github.com/gambruh/gophkeeper/internal/helpers"
-	"github.com/gambruh/gophkeeper/internal/storage"
+	"github.com/gambruh/simplevault/internal/helpers"
+	"github.com/gambruh/simplevault/internal/storage"
 )
 
 // CheckAll function checks for desynchronized data between client and server

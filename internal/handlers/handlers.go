@@ -14,10 +14,10 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
-	"github.com/gambruh/gophkeeper/internal/auth"
-	"github.com/gambruh/gophkeeper/internal/config"
-	"github.com/gambruh/gophkeeper/internal/storage"
-	"github.com/gambruh/gophkeeper/internal/storage/database"
+	"github.com/gambruh/simplevault/internal/auth"
+	"github.com/gambruh/simplevault/internal/config"
+	"github.com/gambruh/simplevault/internal/storage"
+	"github.com/gambruh/simplevault/internal/storage/database"
 )
 
 // WebService is a class to
@@ -128,7 +128,7 @@ func (h *WebService) Register(w http.ResponseWriter, r *http.Request) {
 		}
 		// Set the token in "Cookies"
 		http.SetCookie(w, &http.Cookie{
-			Name:  "gophkeeper-auth",
+			Name:  "simplevault-auth",
 			Value: token,
 		})
 		// Return a success response
@@ -177,7 +177,7 @@ func (h *WebService) Login(w http.ResponseWriter, r *http.Request) {
 
 	// Set the token as a cookie in the response
 	http.SetCookie(w, &http.Cookie{
-		Name:  "gophkeeper-auth",
+		Name:  "simplevault-auth",
 		Value: token,
 	})
 

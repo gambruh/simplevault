@@ -9,9 +9,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gambruh/gophkeeper/internal/clientfunc"
-	"github.com/gambruh/gophkeeper/internal/compileinfo"
-	"github.com/gambruh/gophkeeper/internal/config"
+	"github.com/gambruh/simplevault/internal/clientfunc"
+	"github.com/gambruh/simplevault/internal/compileinfo"
+	"github.com/gambruh/simplevault/internal/config"
 )
 
 var (

@@ -5,10 +5,10 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/gambruh/gophkeeper/internal/auth"
-	"github.com/gambruh/gophkeeper/internal/config"
-	"github.com/gambruh/gophkeeper/internal/handlers"
-	"github.com/gambruh/gophkeeper/internal/storage/database"
+	"github.com/gambruh/simplevault/internal/auth"
+	"github.com/gambruh/simplevault/internal/config"
+	"github.com/gambruh/simplevault/internal/handlers"
+	"github.com/gambruh/simplevault/internal/storage/database"
 )
 
 func main() {

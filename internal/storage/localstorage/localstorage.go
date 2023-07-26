@@ -12,9 +12,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/gambruh/gophkeeper/internal/config"
-	"github.com/gambruh/gophkeeper/internal/encrypt"
-	"github.com/gambruh/gophkeeper/internal/storage"
+	"github.com/gambruh/simplevault/internal/config"
+	"github.com/gambruh/simplevault/internal/encrypt"
+	"github.com/gambruh/simplevault/internal/storage"
 )
 
 type LocalStorage struct {

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/gambruh/gophkeeper/internal/storage"
+	"github.com/gambruh/simplevault/internal/storage"
 )
 
 // Card commands helpers

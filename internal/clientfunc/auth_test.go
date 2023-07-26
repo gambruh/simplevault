@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/gambruh/gophkeeper/internal/auth"
+	"github.com/gambruh/simplevault/internal/auth"
 )
 
 func Test_getUserDataFromFile(t *testing.T) {

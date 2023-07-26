@@ -10,8 +10,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/gambruh/gophkeeper/internal/encrypt"
-	"github.com/gambruh/gophkeeper/internal/storage"
+	"github.com/gambruh/simplevault/internal/encrypt"
+	"github.com/gambruh/simplevault/internal/storage"
 )
 
 var (

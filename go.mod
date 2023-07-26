@@ -1,4 +1,4 @@
-module github.com/gambruh/gophkeeper
+module github.com/gambruh/simplevault
 
 go 1.19
 
