@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/alexedwards/argon2id"
-	"github.com/dgrijalva/jwt-go"
+	"github.com/golang-jwt/jwt/v5"
 
 	"github.com/gambruh/simplevault/internal/config"
 )
@@ -74,7 +74,7 @@ func AuthMiddleware(next http.Handler) http.Handler {
 
 		type MyCustomClaims struct {
 			UserID string `json:"userID"`
-			jwt.StandardClaims
+			jwt.RegisteredClaims
 		}
 
 		cookie, err := r.Cookie("simplevault-auth")
