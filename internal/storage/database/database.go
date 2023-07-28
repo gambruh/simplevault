@@ -8,7 +8,8 @@ import (
 	"log"
 	"time"
 
-	"github.com/lib/pq"
+	"github.com/jackc/pgx/v5/pgconn"
+	_ "github.com/jackc/pgx/v5/stdlib"
 
 	"github.com/gambruh/simplevault/internal/config"
 	"github.com/gambruh/simplevault/internal/storage"
@@ -34,7 +35,7 @@ type SQLdb struct {
 }
 
 func NewSQLdb(postgresStr string) *SQLdb {
-	DB, _ := sql.Open("postgres", postgresStr)
+	DB, _ := sql.Open("pgx", postgresStr)
 	return &SQLdb{
 		DB: DB,
 	}
@@ -53,7 +54,7 @@ func GetDB() (defstorage Storage) {
 }
 
 func (s *SQLdb) CheckConn(dbAddress string) error {
-	db, err := sql.Open("postgres", config.Cfg.Database)
+	db, err := sql.Open("pgx", config.Cfg.Database)
 	if err != nil {
 		fmt.Printf("error while opening DB:%v\n", err)
 		return err
@@ -392,7 +393,7 @@ func (s *SQLdb) ListBinaries(username string) (binarynames []string, err error) 
 }
 
 func IsUniqueConstraintViolation(err error) bool {
-	if pgErr, ok := err.(*pq.Error); ok {
+	if pgErr, ok := err.(*pgconn.PgError); ok {
 		return pgErr.Code == "23505"
 	}
 	return false
