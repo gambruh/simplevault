@@ -1,11 +1,19 @@
 # simplevault
 
+## Overview
 Is a very simple vault application that has next functionality:
 
  - store bank card data
  - store logins and passwords
  - store protected notes
- - store binary files (any files in fact)
+ - store files
 
 
- This has been done as a learning experience. WARNING: don't use it yet :D
+## How to start the app:
+
+    docker-compose up --build -d
+
+
+## Usage:
+
+ - 
