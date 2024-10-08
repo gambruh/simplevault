@@ -13,6 +13,7 @@ import (
 
 	"github.com/alexedwards/argon2id"
 	"github.com/golang-jwt/jwt/v5"
+	_ "github.com/jackc/pgx/v5/stdlib"
 
 	"github.com/gambruh/simplevault/internal/config"
 )
@@ -104,18 +105,32 @@ func AuthMiddleware(next http.Handler) http.Handler {
 }
 
 // NewAuthDB returns connection to authDB
-func NewAuthDB(postgresStr string) *AuthDB {
-	db, _ := sql.Open("postgres", postgresStr)
+func NewAuthDB(postgresStr string) (*AuthDB, error) {
+	db, err := sql.Open("pgx", postgresStr)
+	if err != nil {
+		return nil, err
+	}
+
 	return &AuthDB{
 		db: db,
-	}
+	}, nil
 }
 
 // GetAuthDB returns new auth storage
 func GetAuthDB() (authstorage AuthStorage) {
 
-	db := NewAuthDB(config.Cfg.Database)
-	db.InitAuthDB()
+	db, err := NewAuthDB(config.Cfg.Database)
+	if err != nil {
+		log.Printf("ERROR: %s\n", err.Error())
+		panic(err)
+	}
+	err = db.InitAuthDB()
+
+	if err != nil {
+		log.Printf("ERROR: %s\n", err.Error())
+		panic(err)
+	}
+
 	authstorage = db
 
 	return authstorage
@@ -144,6 +159,7 @@ func (s *AuthDB) InitAuthDB() error {
 	}
 	err = s.CreatePasswordsTable()
 	if err != nil {
+		//log.Printf("ERROR: %s\n", err.Error())
 		return err
 	}
 	return nil

@@ -1,0 +1,11 @@
+2024/10/08 12:47:30 auth.go:123: ERROR: sql: unknown driver "postgres" (forgotten import?)
+2024/10/08 12:49:26 auth.go:124: ERROR: sql: unknown driver "postgres" (forgotten import?)
+2024/10/08 12:50:55 auth.go:124: ERROR: sql: unknown driver "postgres" (forgotten import?)
+2024/10/08 12:54:21 auth.go:145: error checking if table exists: failed to connect to `user=postgres database=postgres`:
+	[::1]:5432 (localhost): dial error: dial tcp [::1]:5432: connectex: No connection could be made because the target machine actively refused it.
+	127.0.0.1:5432 (localhost): dial error: dial tcp 127.0.0.1:5432: connectex: No connection could be made because the target machine actively refused it.
+2024/10/08 12:54:21 auth.go:145: error checking if table exists: failed to connect to `user=postgres database=postgres`:
+	[::1]:5432 (localhost): dial error: dial tcp [::1]:5432: connectex: No connection could be made because the target machine actively refused it.
+	127.0.0.1:5432 (localhost): dial error: dial tcp 127.0.0.1:5432: connectex: No connection could be made because the target machine actively refused it.
+2024/10/08 12:54:21 main.go:46: open cert.pem: The system cannot find the file specified.
+2024/10/08 13:45:53 main.go:46: open cert.pem: The system cannot find the file specified.

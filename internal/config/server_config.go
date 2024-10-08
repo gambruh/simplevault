@@ -14,7 +14,7 @@ type Config struct {
 	Certificate string `env:"GK_CERT" envDefault:"cert.pem"`
 	PrivateKey  string `env:"GK_PRIVATE_KEY" envDefault:"privatekey.pem"`
 	Key         string `env:"GK_HASHKEY" envDefault:""`
-	Database    string `env:"GK_DATABASE" envDefault:"postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable"`
+	Database    string `env:"GK_DATABASE" envDefault:"postgres://postgres:postgres@host.docker.internal:5432/postgres?sslmode=disable"`
 }
 
 // FlagConfig stores flag values

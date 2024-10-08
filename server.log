@@ -1,0 +1,24 @@
+2024/10/08 13:39:02 auth.go:145: error checking if table exists: failed to connect to `user=postgres database=postgres`:
+	[::1]:5432 (localhost): dial error: dial tcp [::1]:5432: connectex: No connection could be made because the target machine actively refused it.
+	127.0.0.1:5432 (localhost): dial error: dial tcp 127.0.0.1:5432: connectex: No connection could be made because the target machine actively refused it.
+2024/10/08 13:39:02 auth.go:145: error checking if table exists: failed to connect to `user=postgres database=postgres`:
+	[::1]:5432 (localhost): dial error: dial tcp [::1]:5432: connectex: No connection could be made because the target machine actively refused it.
+	127.0.0.1:5432 (localhost): dial error: dial tcp 127.0.0.1:5432: connectex: No connection could be made because the target machine actively refused it.
+2024/10/08 13:39:02 main.go:46: open cert.pem: The system cannot find the file specified.
+2024/10/08 13:39:23 auth.go:145: error checking if table exists: failed to connect to `user=postgres database=postgres`:
+	[::1]:5432 (localhost): dial error: dial tcp [::1]:5432: connectex: No connection could be made because the target machine actively refused it.
+	127.0.0.1:5432 (localhost): dial error: dial tcp 127.0.0.1:5432: connectex: No connection could be made because the target machine actively refused it.
+2024/10/08 13:39:23 auth.go:145: error checking if table exists: failed to connect to `user=postgres database=postgres`:
+	[::1]:5432 (localhost): dial error: dial tcp [::1]:5432: connectex: No connection could be made because the target machine actively refused it.
+	127.0.0.1:5432 (localhost): dial error: dial tcp 127.0.0.1:5432: connectex: No connection could be made because the target machine actively refused it.
+2024/10/08 13:39:23 main.go:46: open cert.pem: The system cannot find the file specified.
+2024/10/08 13:40:01 auth.go:145: error checking if table exists: failed to connect to `user=postgres database=postgres`:
+	[::1]:5432 (localhost): dial error: dial tcp [::1]:5432: connectex: No connection could be made because the target machine actively refused it.
+	127.0.0.1:5432 (localhost): dial error: dial tcp 127.0.0.1:5432: connectex: No connection could be made because the target machine actively refused it.
+2024/10/08 13:40:01 auth.go:145: error checking if table exists: failed to connect to `user=postgres database=postgres`:
+	[::1]:5432 (localhost): dial error: dial tcp [::1]:5432: connectex: No connection could be made because the target machine actively refused it.
+	127.0.0.1:5432 (localhost): dial error: dial tcp 127.0.0.1:5432: connectex: No connection could be made because the target machine actively refused it.
+2024/10/08 13:40:01 main.go:46: open cert.pem: The system cannot find the file specified.
+2024/10/08 13:43:01 main.go:46: open cert.pem: The system cannot find the file specified.
+2024/10/08 13:45:02 main.go:46: open cert.pem: The system cannot find the file specified.
+2024/10/08 13:45:26 main.go:46: open cert.pem: The system cannot find the file specified.
