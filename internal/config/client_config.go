@@ -1,9 +1,7 @@
 package config
 
 import (
-	"flag"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"time"
@@ -27,66 +25,74 @@ type ClientConfig struct {
 
 // ClientFlagConfig is a structure to store client flag values
 type ClientFlagConfig struct {
-	Address         *string
-	ClientCert      *string
-	ServerCert      *string
-	PrivateKey      *string
-	LocalStorage    *string
-	UserDataFolder  *string
-	UserDataFile    *string
-	BinInputFolder  *string
-	BinOutputFolder *string
-	CheckTime       *time.Duration
+	Address         string
+	ClientCert      string
+	PrivateKey      string
+	LocalStorage    string
+	BinInputFolder  string
+	BinOutputFolder string
+	CheckTime       time.Duration
 }
 
-// InitClientFlags simply initiates the client flags
-func InitClientFlags() {
-	ClientFlags.Address = flag.String("a", "localhost:8080", "server address in format host:port")
-	ClientFlags.ClientCert = flag.String("s", "publickey.pem", "path to client's certificate file")
-	ClientFlags.PrivateKey = flag.String("p", "privatekey.pem", "path to file with public key for agent")
-	ClientFlags.LocalStorage = flag.String("localstorage", "./localstorage", "address of the folder to store files")
-	ClientFlags.CheckTime = flag.Duration("t", 60*time.Second, "interval in time.Duration format (10s, 5m) to check data from DB")
-	ClientFlags.BinInputFolder = flag.String("bininputfolder", "./filetosend", "folder to put binaries in to be sent")
-	ClientFlags.BinOutputFolder = flag.String("binoutputfolder", "./filesrcv", "folder to store received binaries")
+// DefaultClientFlags returns default CLI values for client startup.
+func DefaultClientFlags() ClientFlagConfig {
+	return ClientFlagConfig{
+		Address:         "localhost:8080",
+		ClientCert:      "publickey.pem",
+		PrivateKey:      "privatekey.pem",
+		LocalStorage:    "./localstorage",
+		CheckTime:       60 * time.Second,
+		BinInputFolder:  "./filetosend",
+		BinOutputFolder: "./filesrcv",
+	}
 }
 
 // SetClientConfig sets the config, parsing flags and looking for env values
 // Env values are preferred over flags
-func SetClientConfig() (cfg ClientConfig) {
-	InitClientFlags()
-	env.Parse(&ClientCfg)
+func SetClientConfig(flags ClientFlagConfig) (ClientConfig, error) {
+	cfg := ClientConfig{}
+	if err := env.Parse(&cfg); err != nil {
+		return ClientConfig{}, fmt.Errorf("parse client env: %w", err)
+	}
+
 	if _, check := os.LookupEnv("GK_ADDRESS"); !check {
-		cfg.Address = *ClientFlags.Address
+		cfg.Address = flags.Address
 	}
 	if _, check := os.LookupEnv("GK_PRIVATEKEY"); !check {
-		ex, err := os.Getwd()
+		privateKeyPath, err := resolveClientPath(flags.PrivateKey)
 		if err != nil {
-			log.Println("error when trying to get filepath in SetClientConfig:", err)
+			return ClientConfig{}, fmt.Errorf("resolve private key path: %w", err)
 		}
-
-		cfg.PrivateKey = filepath.Join(filepath.Dir(ex), *ClientFlags.PrivateKey)
-		fmt.Println("CLIENT PRIVATE KEY", cfg.PrivateKey)
+		cfg.PrivateKey = privateKeyPath
 	}
 	if _, check := os.LookupEnv("GK_LOCALSTORAGE"); !check {
-		cfg.LocalStorage = *ClientFlags.LocalStorage
+		cfg.LocalStorage = flags.LocalStorage
 	}
 	if _, check := os.LookupEnv("GK_CHECKINTERVAL"); !check {
-		cfg.CheckTime = *ClientFlags.CheckTime
+		cfg.CheckTime = flags.CheckTime
 	}
 	if _, check := os.LookupEnv("GK_BINARIES_INPUT"); !check {
-		ClientCfg.BinInputFolder = *ClientFlags.BinInputFolder
+		cfg.BinInputFolder = flags.BinInputFolder
 	}
 	if _, check := os.LookupEnv("GK_BINARIES_OUTPUT"); !check {
-		cfg.BinOutputFolder = *ClientFlags.BinOutputFolder
+		cfg.BinOutputFolder = flags.BinOutputFolder
 	}
-	if _, check := os.LookupEnv("GK_CERT"); !check {
-		ex, err := os.Getwd()
+	if _, check := os.LookupEnv("GK_PUBLICKEY"); !check {
+		clientCertPath, err := resolveClientPath(flags.ClientCert)
 		if err != nil {
-			log.Println("error when trying to get filepath in SetClientConfig:", err)
+			return ClientConfig{}, fmt.Errorf("resolve client cert path: %w", err)
 		}
-
-		cfg.ClientCert = filepath.Join(filepath.Dir(ex), *ClientFlags.ClientCert)
-		fmt.Println("CLIENT CERTIFICATE", cfg.ClientCert)
+		cfg.ClientCert = clientCertPath
 	}
-	return cfg
+
+	ClientCfg = cfg
+	return cfg, nil
+}
+
+func resolveClientPath(path string) (string, error) {
+	ex, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(filepath.Dir(ex), path), nil
 }
