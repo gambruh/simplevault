@@ -2,7 +2,7 @@
 package config
 
 import (
-	"flag"
+	"fmt"
 	"os"
 
 	"github.com/caarlos0/env/v6"
@@ -19,11 +19,11 @@ type Config struct {
 
 // FlagConfig stores flag values
 type FlagConfig struct {
-	Address     *string
-	Certificate *string
-	PrivateKey  *string
-	Key         *string
-	Database    *string
+	Address     string
+	Certificate string
+	PrivateKey  string
+	Key         string
+	Database    string
 }
 
 // UserId type is used to set server cookies
@@ -32,38 +32,43 @@ type UserID string
 var (
 	//global variable for server config
 	Cfg Config
-	//global variable for server flags
-	Flags FlagConfig
 	//global variable for client config
 	ClientCfg ClientConfig
-	//global variable for client flags
-	ClientFlags ClientFlagConfig
 )
 
-// InitFlags initiates server flags, giving its default values in case if no flag is provided
-func InitFlags() {
-	Flags.Address = flag.String("a", "localhost:8080", "server address in format host:port")
-	Flags.Certificate = flag.String("cert", "cert.pem", "certificate to run TLS")
-	Flags.PrivateKey = flag.String("privatekey", "privatekey.pem", "server's private key")
-	Flags.Database = flag.String("d", "postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable", "postgres database uri")
-	Flags.Key = flag.String("k", "abcd", "key to hash")
-	flag.Parse()
+// DefaultServerFlags returns default CLI values for server startup.
+func DefaultServerFlags() FlagConfig {
+	return FlagConfig{
+		Address:     "localhost:8080",
+		Certificate: "cert.pem",
+		PrivateKey:  "privatekey.pem",
+		Database:    "postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable",
+		Key:         "abcd",
+	}
 }
 
 // SetConfig looks for env values and parses flags in case if there are none
 // env values preferred over flag values
-func SetConfig() {
-	env.Parse(&Cfg)
+func SetConfig(flags FlagConfig) error {
+	cfg := Config{}
+	if err := env.Parse(&cfg); err != nil {
+		return fmt.Errorf("parse server env: %w", err)
+	}
 	if _, check := os.LookupEnv("GK_ADDRESS"); !check {
-		Cfg.Address = *Flags.Address
+		cfg.Address = flags.Address
 	}
 	if _, check := os.LookupEnv("GK_DATABASE"); !check {
-		Cfg.Database = *Flags.Database
+		cfg.Database = flags.Database
 	}
 	if _, check := os.LookupEnv("GK_CERT"); !check {
-		Cfg.Certificate = *Flags.Certificate
+		cfg.Certificate = flags.Certificate
+	}
+	if _, check := os.LookupEnv("GK_PRIVATE_KEY"); !check {
+		cfg.PrivateKey = flags.PrivateKey
 	}
 	if _, check := os.LookupEnv("GK_HASHKEY"); !check {
-		Cfg.Key = *Flags.Key
+		cfg.Key = flags.Key
 	}
+	Cfg = cfg
+	return nil
 }
